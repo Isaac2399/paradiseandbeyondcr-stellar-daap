@@ -1,0 +1,82 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
+import type { AppUser } from '@/types/user'
+import {
+  fetchSession,
+  loginUser,
+  logoutUser,
+  registerUser,
+  updateStoredPublicKey,
+} from '@/lib/auth/api'
+
+type AuthContextValue = {
+  user: AppUser | null
+  loading: boolean
+  login: (input: { email: string; password: string }) => Promise<void>
+  register: (input: {
+    email: string
+    password: string
+    role: AppUser['role']
+  }) => Promise<void>
+  logout: () => Promise<void>
+  syncPublicKey: (publicKey: string) => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AppUser | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    void fetchSession()
+      .then(setUser)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const login = useCallback(async (input: { email: string; password: string }) => {
+    setUser(await loginUser(input))
+  }, [])
+
+  const register = useCallback(
+    async (input: {
+      email: string
+      password: string
+      role: AppUser['role']
+    }) => {
+      setUser(await registerUser(input))
+    },
+    [],
+  )
+
+  const logout = useCallback(async () => {
+    await logoutUser()
+    setUser(null)
+  }, [])
+
+  const syncPublicKey = useCallback(async (publicKey: string) => {
+    setUser(await updateStoredPublicKey(publicKey))
+  }, [])
+
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout, syncPublicKey }),
+    [user, loading, login, register, logout, syncPublicKey],
+  )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+}
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth debe usarse dentro de AuthProvider')
+  }
+  return context
+}
