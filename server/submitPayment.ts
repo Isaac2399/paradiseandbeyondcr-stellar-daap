@@ -28,7 +28,7 @@ export async function submitCustodialPayment(input: {
     throw new AuthError('El monto no es válido', 400)
   }
 
-  const source = Keypair.fromSecret(secretKeyForUser(input.userId))
+  const source = Keypair.fromSecret(await secretKeyForUser(input.userId))
   const asset = resolveAsset(input.asset)
   const server = new Horizon.Server(horizonUrl())
   const account = await server.loadAccount(source.publicKey())
