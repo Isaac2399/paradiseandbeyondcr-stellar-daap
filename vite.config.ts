@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => {
   const passThrough = [
     'SESSION_SECRET',
     'SPONSOR_SECRET_KEY',
+    'KV_REST_API_URL',
+    'KV_REST_API_TOKEN',
+    'UPSTASH_REDIS_REST_URL',
+    'UPSTASH_REDIS_REST_TOKEN',
     'VITE_STELLAR_NETWORK',
     'VITE_HORIZON_URL',
     'VITE_NETWORK_PASSPHRASE',

@@ -1,16 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
-import {
-  AuthError,
-  authenticate,
-  clearSessionCookie,
-  createSessionCookie,
-  createUser,
-  updateUserPublicKey,
-  userFromCookieHeader,
-  type UserRole,
-} from './auth.ts'
-import { submitCustodialPayment } from './submitPayment.ts'
+import { dispatchApi } from './dispatchApi.ts'
 
 export function authApiPlugin(): Plugin {
   return {
@@ -36,98 +26,27 @@ async function handleApi(
   }
 
   try {
-    const path = url.split('?')[0]
-
-    if (req.method === 'POST' && path === '/api/payments') {
-      const session = userFromCookieHeader(req.headers.cookie)
-      if (!session) {
-        json(res, 401, { error: 'No hay sesión' })
-        return
-      }
-      const body = await readJson(req)
-      const result = await submitCustodialPayment({
-        userId: session.id,
-        destination: String(body.destination ?? ''),
-        amount: String(body.amount ?? ''),
-        asset: String(body.asset ?? ''),
-        memo: String(body.memo ?? ''),
-      })
-      json(res, 200, result)
-      return
+    const path = url.split('?')[0] ?? url
+    const body =
+      req.method === 'GET' || req.method === 'HEAD' ? {} : await readJson(req)
+    const result = await dispatchApi({
+      method: req.method ?? 'GET',
+      path,
+      cookie: req.headers.cookie,
+      body,
+    })
+    const payload = JSON.stringify(result.body)
+    res.statusCode = result.status
+    res.setHeader('Content-Type', 'application/json')
+    if (result.setCookie) {
+      res.setHeader('Set-Cookie', result.setCookie)
     }
-
-    if (!url.startsWith('/api/auth')) {
-      json(res, 404, { error: 'Ruta no encontrada' })
-      return
-    }
-    if (req.method === 'POST' && path === '/api/auth/register') {
-      const body = await readJson(req)
-      const user = await createUser({
-        email: String(body.email ?? ''),
-        password: String(body.password ?? ''),
-        role: body.role as UserRole,
-      })
-      json(res, 201, user, createSessionCookie(user.id))
-      return
-    }
-
-    if (req.method === 'POST' && path === '/api/auth/login') {
-      const body = await readJson(req)
-      const user = authenticate(String(body.email ?? ''), String(body.password ?? ''))
-      json(res, 200, user, createSessionCookie(user.id))
-      return
-    }
-
-    if (req.method === 'POST' && path === '/api/auth/logout') {
-      json(res, 200, { ok: true }, clearSessionCookie())
-      return
-    }
-
-    if (req.method === 'GET' && path === '/api/auth/me') {
-      const user = userFromCookieHeader(req.headers.cookie)
-      if (!user) {
-        json(res, 401, { error: 'No hay sesión' })
-        return
-      }
-      json(res, 200, user)
-      return
-    }
-
-    if (req.method === 'PATCH' && path === '/api/auth/me') {
-      const session = userFromCookieHeader(req.headers.cookie)
-      if (!session) {
-        json(res, 401, { error: 'No hay sesión' })
-        return
-      }
-      const body = await readJson(req)
-      const user = updateUserPublicKey(session.id, String(body.publicKey ?? ''))
-      json(res, 200, user)
-      return
-    }
-
-    json(res, 404, { error: 'Ruta no encontrada' })
-  } catch (error) {
-    if (error instanceof AuthError) {
-      json(res, error.status, { error: error.message })
-      return
-    }
-    json(res, 500, { error: 'Error interno' })
+    res.end(payload)
+  } catch {
+    res.statusCode = 500
+    res.setHeader('Content-Type', 'application/json')
+    res.end(JSON.stringify({ error: 'Error interno' }))
   }
-}
-
-function json(
-  res: ServerResponse,
-  status: number,
-  body: unknown,
-  setCookie?: string,
-) {
-  const payload = JSON.stringify(body)
-  res.statusCode = status
-  res.setHeader('Content-Type', 'application/json')
-  if (setCookie) {
-    res.setHeader('Set-Cookie', setCookie)
-  }
-  res.end(payload)
 }
 
 async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {

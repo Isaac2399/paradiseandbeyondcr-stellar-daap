@@ -7,16 +7,12 @@ import {
   scryptSync,
   timingSafeEqual,
 } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { StrKey } from '@stellar/stellar-sdk'
 import { provisionStellarAccount } from './provisionAccount.ts'
+import { loadStore, saveStore } from './userStore.ts'
 
 export type UserRole = 'customer' | 'merchant'
 
-const DATA_DIR = join(fileURLToPath(new URL('../data', import.meta.url)))
-const USERS_FILE = join(DATA_DIR, 'users.json')
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const COOKIE_NAME = 'stellar_session'
 
@@ -38,23 +34,13 @@ export type PublicUser = {
   publicKey: string
 }
 
-type UserStore = { users: StoredUser[] }
-
 function sessionSecret(): string {
   return process.env.SESSION_SECRET ?? 'stellar-web-app-dev-secret'
 }
 
-function loadStore(): UserStore {
-  if (!existsSync(USERS_FILE)) {
-    return { users: [] }
-  }
-  const raw = readFileSync(USERS_FILE, 'utf8')
-  return JSON.parse(raw) as UserStore
-}
-
-function saveStore(store: UserStore) {
-  mkdirSync(dirname(USERS_FILE), { recursive: true })
-  writeFileSync(USERS_FILE, JSON.stringify(store, null, 2), 'utf8')
+function cookieAttrs(): string {
+  const secure = process.env.VERCEL ? '; Secure' : ''
+  return `HttpOnly; Path=/; SameSite=Lax${secure}`
 }
 
 export function toPublicUser(user: StoredUser): PublicUser {
@@ -66,13 +52,17 @@ export function toPublicUser(user: StoredUser): PublicUser {
   }
 }
 
-export function findUserByEmail(email: string): StoredUser | undefined {
+export async function findUserByEmail(
+  email: string,
+): Promise<StoredUser | undefined> {
   const normalized = normalizeEmail(email)
-  return loadStore().users.find((user) => user.email === normalized)
+  const store = await loadStore()
+  return store.users.find((user) => user.email === normalized)
 }
 
-export function findUserById(id: string): StoredUser | undefined {
-  return loadStore().users.find((user) => user.id === id)
+export async function findUserById(id: string): Promise<StoredUser | undefined> {
+  const store = await loadStore()
+  return store.users.find((user) => user.id === id)
 }
 
 export async function createUser(input: {
@@ -90,7 +80,7 @@ export async function createUser(input: {
   if (input.role !== 'customer' && input.role !== 'merchant') {
     throw new AuthError('El rol debe ser customer o merchant', 400)
   }
-  if (findUserByEmail(email)) {
+  if (await findUserByEmail(email)) {
     throw new AuthError('Ya existe una cuenta con ese email', 409)
   }
 
@@ -114,31 +104,37 @@ export async function createUser(input: {
     createdAt: new Date().toISOString(),
   }
 
-  const store = loadStore()
+  const store = await loadStore()
   store.users.push(user)
-  saveStore(store)
+  await saveStore(store)
   return toPublicUser(user)
 }
 
-export function authenticate(email: string, password: string): PublicUser {
-  const user = findUserByEmail(email)
+export async function authenticate(
+  email: string,
+  password: string,
+): Promise<PublicUser> {
+  const user = await findUserByEmail(email)
   if (!user || !verifyPassword(password, user.salt, user.passwordHash)) {
     throw new AuthError('Email o contraseña incorrectos', 401)
   }
   return toPublicUser(user)
 }
 
-export function updateUserPublicKey(userId: string, publicKey: string): PublicUser {
+export async function updateUserPublicKey(
+  userId: string,
+  publicKey: string,
+): Promise<PublicUser> {
   if (!StrKey.isValidEd25519PublicKey(publicKey)) {
     throw new AuthError('La public key de Stellar no es válida', 400)
   }
-  const store = loadStore()
+  const store = await loadStore()
   const user = store.users.find((entry) => entry.id === userId)
   if (!user) {
     throw new AuthError('No hay sesión', 401)
   }
   user.publicKey = publicKey
-  saveStore(store)
+  await saveStore(store)
   return toPublicUser(user)
 }
 
@@ -147,14 +143,16 @@ export function createSessionCookie(userId: string): string {
   const payload = `${userId}.${exp}`
   const sig = createHmac('sha256', sessionSecret()).update(payload).digest('hex')
   const token = `${payload}.${sig}`
-  return `${COOKIE_NAME}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`
+  return `${COOKIE_NAME}=${token}; ${cookieAttrs()}; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`
 }
 
 export function clearSessionCookie(): string {
-  return `${COOKIE_NAME}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`
+  return `${COOKIE_NAME}=; ${cookieAttrs()}; Max-Age=0`
 }
 
-export function userFromCookieHeader(header: string | undefined): PublicUser | null {
+export async function userFromCookieHeader(
+  header: string | undefined,
+): Promise<PublicUser | null> {
   const token = readCookie(header, COOKIE_NAME)
   if (!token) {
     return null
@@ -169,7 +167,7 @@ export function userFromCookieHeader(header: string | undefined): PublicUser | n
   if (!safeEqual(sig, expected) || Number(exp) < Date.now()) {
     return null
   }
-  const user = findUserById(userId)
+  const user = await findUserById(userId)
   return user ? toPublicUser(user) : null
 }
 
@@ -182,8 +180,8 @@ export class AuthError extends Error {
   }
 }
 
-export function secretKeyForUser(userId: string): string {
-  const user = findUserById(userId)
+export async function secretKeyForUser(userId: string): Promise<string> {
+  const user = await findUserById(userId)
   if (!user?.secretKeyEnc) {
     throw new AuthError(
       'Esta cuenta no tiene llave custodial; no se puede firmar el pago.',
