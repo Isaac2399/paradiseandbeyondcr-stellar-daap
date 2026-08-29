@@ -21,19 +21,60 @@ export async function provisionStellarAccount(): Promise<{
 
   if (isTestnet()) {
     await fundWithFriendbot(publicKey)
+    await waitForAccount(publicKey)
   }
 
-  await openLoyaltyTrustline(pair)
+  await ensureLoyaltyTrustline(secretKey)
 
   return { publicKey, secretKey }
 }
 
+export async function ensureLoyaltyTrustline(secretKey: string): Promise<void> {
+  const asset = loyaltyAssetFromEnv()
+  if (!asset) {
+    throw new Error(
+      'Faltan LOYALTY_CODE y LOYALTY_ISSUER (o VITE_LOYALTY_CODE / VITE_LOYALTY_ISSUER) en el servidor. Sin eso no se abre la trustline.',
+    )
+  }
+
+  const pair = Keypair.fromSecret(secretKey)
+  const server = new Horizon.Server(horizonUrl())
+  const account = await waitForAccount(pair.publicKey())
+
+  if (hasTrustline(account, asset)) {
+    return
+  }
+
+  const fee = String(await server.fetchBaseFee())
+  const transaction = new TransactionBuilder(account, {
+    fee,
+    networkPassphrase: networkPassphrase(),
+  })
+    .addOperation(Operation.changeTrust({ asset }))
+    .setTimeout(60)
+    .build()
+
+  transaction.sign(pair)
+
+  try {
+    const result = await server.submitTransaction(transaction)
+    if (!result.successful && result.successful !== undefined) {
+      throw new Error('Horizon rechazó la trustline del token de lealtad')
+    }
+  } catch (error) {
+    if (isAlreadyTrustedError(error)) {
+      return
+    }
+    const detail = error instanceof Error ? error.message : 'error de red'
+    throw new Error(`No se pudo abrir la trustline de ${asset.getCode()}: ${detail}`)
+  }
+}
+
 export function isTestnet(): boolean {
-  const network = (process.env.VITE_STELLAR_NETWORK ??
-    process.env.NEXT_PUBLIC_STELLAR_NETWORK ??
-    'TESTNET')
-    .trim()
-    .toUpperCase()
+  const network = readEnv(
+    'VITE_STELLAR_NETWORK',
+    'NEXT_PUBLIC_STELLAR_NETWORK',
+  ).toUpperCase()
   if (network === 'PUBLIC') {
     return false
   }
@@ -42,36 +83,35 @@ export function isTestnet(): boolean {
 
 export function networkPassphrase(): string {
   return (
-    process.env.VITE_NETWORK_PASSPHRASE ??
+    readEnv('VITE_NETWORK_PASSPHRASE') ||
     (isPublicNetwork() ? Networks.PUBLIC : Networks.TESTNET)
   )
 }
 
 function isPublicNetwork(): boolean {
-  const network = (
-    process.env.VITE_STELLAR_NETWORK ??
-    process.env.NEXT_PUBLIC_STELLAR_NETWORK ??
-    ''
+  return (
+    readEnv(
+      'VITE_STELLAR_NETWORK',
+      'NEXT_PUBLIC_STELLAR_NETWORK',
+    ).toUpperCase() === 'PUBLIC'
   )
-    .trim()
-    .toUpperCase()
-  return network === 'PUBLIC'
 }
 
 export function horizonUrl(): string {
   return (
-    process.env.VITE_HORIZON_URL ??
-    process.env.NEXT_PUBLIC_HORIZON_URL ??
+    readEnv('VITE_HORIZON_URL', 'NEXT_PUBLIC_HORIZON_URL') ||
     'https://horizon-testnet.stellar.org'
   )
 }
 
 export function loyaltyAssetFromEnv(): Asset | null {
   const code = readEnv(
+    'LOYALTY_CODE',
     'VITE_LOYALTY_CODE',
     'NEXT_PUBLIC_LOYALTY_CODE',
   )
   const issuer = readEnv(
+    'LOYALTY_ISSUER',
     'VITE_LOYALTY_ISSUER',
     'NEXT_PUBLIC_LOYALTY_ISSUER',
   )
@@ -81,7 +121,7 @@ export function loyaltyAssetFromEnv(): Asset | null {
   }
   if (!StrKey.isValidEd25519PublicKey(issuer)) {
     throw new Error(
-      'LOYALTY_ISSUER no es una public key de Stellar válida. Revisa .env.local.',
+      'LOYALTY_ISSUER no es una public key de Stellar válida.',
     )
   }
   return new Asset(code, issuer)
@@ -98,49 +138,47 @@ async function fundWithFriendbot(publicKey: string) {
   }
 }
 
-async function openLoyaltyTrustline(pair: Keypair) {
-  let asset: Asset | null
-  try {
-    asset = loyaltyAssetFromEnv()
-  } catch (error) {
-    throw error
-  }
-
-  if (!asset) {
-    console.warn(
-      '[stellar] Trustline de lealtad omitida: define VITE_LOYALTY_CODE y VITE_LOYALTY_ISSUER en .env.local',
-    )
-    return
-  }
-
-  try {
-    const server = new Horizon.Server(horizonUrl())
-    const account = await server.loadAccount(pair.publicKey())
-    const fee = String(await server.fetchBaseFee())
-    const transaction = new TransactionBuilder(account, {
-      fee,
-      networkPassphrase: networkPassphrase(),
-    })
-      .addOperation(Operation.changeTrust({ asset }))
-      .setTimeout(60)
-      .build()
-
-    transaction.sign(pair)
-    const result = await server.submitTransaction(transaction)
-    if (!result.successful && result.successful !== undefined) {
-      throw new Error('Horizon rechazó la trustline del token de lealtad')
+async function waitForAccount(publicKey: string): Promise<Horizon.AccountResponse> {
+  const server = new Horizon.Server(horizonUrl())
+  let lastError: unknown
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      return await server.loadAccount(publicKey)
+    } catch (error) {
+      lastError = error
+      await sleep(400 * (attempt + 1))
     }
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : 'error de red'
-    throw new Error(
-      `No se pudo abrir la trustline de ${asset.getCode()}: ${detail}`,
-    )
   }
+  const detail = lastError instanceof Error ? lastError.message : 'timeout'
+  throw new Error(`Horizon no encontró la cuenta nueva: ${detail}`)
+}
+
+function hasTrustline(account: Horizon.AccountResponse, asset: Asset): boolean {
+  return account.balances.some((entry) => {
+    if (entry.asset_type === 'native' || entry.asset_type === 'liquidity_pool_shares') {
+      return false
+    }
+    return entry.asset_code === asset.getCode() && entry.asset_issuer === asset.getIssuer()
+  })
+}
+
+function isAlreadyTrustedError(error: unknown): boolean {
+  const extras = (
+    error as {
+      response?: { data?: { extras?: { result_codes?: { operations?: string[] } } } }
+    }
+  ).response?.data?.extras?.result_codes?.operations
+  return extras?.includes('op_already_exists') === true
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function readEnv(...keys: string[]): string {
+  const env = process.env
   for (const key of keys) {
-    const value = process.env[key]?.trim() ?? ''
+    const value = String(env[key] ?? '').trim()
     if (value && !PLACEHOLDER.test(value)) {
       return value
     }

@@ -18,6 +18,8 @@ export default defineConfig(({ mode }) => {
     'VITE_NETWORK_PASSPHRASE',
     'VITE_LOYALTY_CODE',
     'VITE_LOYALTY_ISSUER',
+    'LOYALTY_CODE',
+    'LOYALTY_ISSUER',
     'VITE_USDC_ISSUER',
     'NEXT_PUBLIC_STELLAR_NETWORK',
     'NEXT_PUBLIC_HORIZON_URL',

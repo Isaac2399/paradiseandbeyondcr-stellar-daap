@@ -120,7 +120,28 @@ export async function authenticate(
   if (!user || !verifyPassword(password, user.salt, user.passwordHash)) {
     throw new AuthError('Email o contraseña incorrectos', 401)
   }
+  await ensureUserLoyaltyTrustline(user.id)
   return toPublicUser(user)
+}
+
+export async function ensureUserLoyaltyTrustline(userId: string): Promise<void> {
+  const user = await findUserById(userId)
+  if (!user?.secretKeyEnc) {
+    return
+  }
+  const { ensureLoyaltyTrustline, loyaltyAssetFromEnv } = await import(
+    './provisionAccount.js'
+  )
+  if (!loyaltyAssetFromEnv()) {
+    return
+  }
+  try {
+    await ensureLoyaltyTrustline(decryptSecret(user.secretKeyEnc))
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'No se pudo abrir la trustline'
+    throw new AuthError(message, 502)
+  }
 }
 
 export async function updateUserPublicKey(

@@ -4,6 +4,7 @@ import {
   clearSessionCookie,
   createSessionCookie,
   createUser,
+  ensureUserLoyaltyTrustline,
   updateUserPublicKey,
   userFromCookieHeader,
   type UserRole,
@@ -75,6 +76,11 @@ async function route(input: {
     const user = await userFromCookieHeader(input.cookie)
     if (!user) {
       return { status: 401, body: { error: 'No hay sesión' } }
+    }
+    try {
+      await ensureUserLoyaltyTrustline(user.id)
+    } catch {
+      // Keep the session even if Horizon is slow; register/login still require the trustline.
     }
     return { status: 200, body: user }
   }
