@@ -4,11 +4,11 @@ import {
   clearSessionCookie,
   createSessionCookie,
   createUser,
+  ensureUserLoyaltyTrustline,
   updateUserPublicKey,
   userFromCookieHeader,
   type UserRole,
-} from './auth.ts'
-import { submitCustodialPayment } from './submitPayment.ts'
+} from './auth.js'
 
 export async function dispatchApi(input: {
   method: string
@@ -40,6 +40,7 @@ async function route(input: {
     if (!session) {
       return { status: 401, body: { error: 'No hay sesión' } }
     }
+    const { submitCustodialPayment } = await import('./submitPayment.js')
     const result = await submitCustodialPayment({
       userId: session.id,
       destination: String(input.body.destination ?? ''),
@@ -75,6 +76,11 @@ async function route(input: {
     const user = await userFromCookieHeader(input.cookie)
     if (!user) {
       return { status: 401, body: { error: 'No hay sesión' } }
+    }
+    try {
+      await ensureUserLoyaltyTrustline(user.id)
+    } catch {
+      // Keep the session even if Horizon is slow; register/login still require the trustline.
     }
     return { status: 200, body: user }
   }
