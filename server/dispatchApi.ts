@@ -1,3 +1,4 @@
+import { submitCustodialPayment } from './submitPayment.js'
 import {
   AuthError,
   authenticate,
@@ -40,7 +41,6 @@ async function route(input: {
     if (!session) {
       return { status: 401, body: { error: 'No hay sesión' } }
     }
-    const { submitCustodialPayment } = await import('./submitPayment.js')
     const result = await submitCustodialPayment({
       userId: session.id,
       destination: String(input.body.destination ?? ''),
