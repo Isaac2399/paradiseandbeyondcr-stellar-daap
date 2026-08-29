@@ -8,6 +8,7 @@ import {
   timingSafeEqual,
 } from 'node:crypto'
 import { AuthError } from './errors.js'
+import { ensureLoyaltyTrustline, provisionStellarAccount } from './provisionAccount.js'
 import { loadStore, saveStore } from './userStore.js'
 
 export { AuthError } from './errors.js'
@@ -87,7 +88,6 @@ export async function createUser(input: {
 
   let keys: { publicKey: string; secretKey: string }
   try {
-    const { provisionStellarAccount } = await import('./provisionAccount.js')
     keys = await provisionStellarAccount()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo crear la cuenta Stellar'
@@ -118,7 +118,10 @@ export async function authenticate(
 ): Promise<PublicUser> {
   const user = await findUserByEmail(email)
   if (!user || !verifyPassword(password, user.salt, user.passwordHash)) {
-    throw new AuthError('Email o contraseña incorrectos', 401)
+    throw new AuthError(
+      'Email o contraseña incorrectos. Las cuentas de tu PC no están en Vercel: usa Registro en este mismo enlace.',
+      401,
+    )
   }
   await ensureUserLoyaltyTrustline(user.id)
   return toPublicUser(user)
@@ -129,7 +132,6 @@ export async function ensureUserLoyaltyTrustline(userId: string): Promise<void> 
   if (!user?.secretKeyEnc) {
     return
   }
-  const { ensureLoyaltyTrustline } = await import('./provisionAccount.js')
   try {
     await ensureLoyaltyTrustline(decryptSecret(user.secretKeyEnc))
   } catch (error) {

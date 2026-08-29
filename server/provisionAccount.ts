@@ -93,10 +93,18 @@ function isPublicNetwork(): boolean {
 }
 
 export function horizonUrl(): string {
-  return (
-    readEnv('VITE_HORIZON_URL', 'NEXT_PUBLIC_HORIZON_URL') ||
-    'https://horizon-testnet.stellar.org'
-  )
+  const raw = readEnv('VITE_HORIZON_URL', 'NEXT_PUBLIC_HORIZON_URL')
+  const fallback = 'https://horizon-testnet.stellar.org'
+  const candidate = stripQuotes(raw) || fallback
+  try {
+    const parsed = new URL(candidate)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return fallback
+    }
+    return parsed.toString().replace(/\/$/, '')
+  } catch {
+    return fallback
+  }
 }
 
 export function loyaltyAssetFromEnv(): Asset {
@@ -169,10 +177,14 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function stripQuotes(value: string): string {
+  return value.replace(/^['"]+|['"]+$/g, '').trim()
+}
+
 function readEnv(...keys: string[]): string {
   const env = process.env
   for (const key of keys) {
-    const value = String(env[key] ?? '').trim()
+    const value = stripQuotes(String(env[key] ?? ''))
     if (value && !PLACEHOLDER.test(value)) {
       return value
     }

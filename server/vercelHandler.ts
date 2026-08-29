@@ -18,7 +18,7 @@ export default async function handler(
       method: req.method ?? 'GET',
       path: requestPath(req),
       cookie: req.headers.cookie,
-      body: parseBody(req.body),
+      body: await readRequestBody(req),
     })
 
     res.statusCode = result.status
@@ -58,6 +58,10 @@ function parseBody(body: unknown): Record<string, unknown> {
   if (!body) {
     return {}
   }
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(body)) {
+    const raw = body.toString('utf8')
+    return raw ? (JSON.parse(raw) as Record<string, unknown>) : {}
+  }
   if (typeof body === 'string') {
     if (!body.trim()) {
       return {}
@@ -68,4 +72,23 @@ function parseBody(body: unknown): Record<string, unknown> {
     return body as Record<string, unknown>
   }
   return {}
+}
+
+async function readRequestBody(req: VercelRequest): Promise<Record<string, unknown>> {
+  const parsed = parseBody(req.body)
+  if (Object.keys(parsed).length > 0) {
+    return parsed
+  }
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    return {}
+  }
+  const chunks: Buffer[] = []
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  const raw = Buffer.concat(chunks).toString('utf8')
+  if (!raw.trim()) {
+    return {}
+  }
+  return JSON.parse(raw) as Record<string, unknown>
 }

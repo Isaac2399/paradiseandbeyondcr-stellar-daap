@@ -2,8 +2,8 @@ import type { AppUser } from '@/types/user'
 
 export class AuthApiError extends Error {
   status: number
-  constructor(message: string, status: number) {
-    super(message)
+  constructor(message: unknown, status: number) {
+    super(errorMessage(message))
     this.name = 'AuthApiError'
     this.status = status
   }
@@ -72,7 +72,28 @@ async function request(path: string, init: RequestInit): Promise<AppUser> {
     )
   }
   if (!response.ok) {
-    throw new AuthApiError(body.error ?? 'Error de autenticación', response.status)
+    throw new AuthApiError(errorMessage(body.error ?? body), response.status)
   }
   return body
+}
+
+function errorMessage(value: unknown): string {
+  if (typeof value === 'string' && value.trim()) {
+    return value
+  }
+  if (value && typeof value === 'object') {
+    const record = value as { error?: unknown; message?: unknown }
+    if (typeof record.error === 'string') {
+      return record.error
+    }
+    if (typeof record.message === 'string') {
+      return record.message
+    }
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return 'Error de autenticación'
+    }
+  }
+  return 'Error de autenticación'
 }

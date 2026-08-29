@@ -50,8 +50,8 @@ export function WalletOverview({ publicKey }: WalletOverviewProps) {
           !stellarConfig.loyalty.issuer ||
           next.raw.some(
             (entry) =>
-              entry.assetCode === stellarConfig.loyalty.code &&
-              entry.assetIssuer === stellarConfig.loyalty.issuer,
+              entry.assetCode?.toUpperCase() ===
+              stellarConfig.loyalty.code.toUpperCase(),
           )
         if (funded && loyaltyReady) {
           break

@@ -32,7 +32,14 @@ function matchCredit(entry: BalanceLine, code: string, issuer: string): boolean 
   if (!issuer || !isCredit(entry)) {
     return false
   }
-  return entry.asset_code === code && entry.asset_issuer === issuer
+  return (
+    entry.asset_code.toUpperCase() === code.toUpperCase() &&
+    entry.asset_issuer === issuer
+  )
+}
+
+function matchLoyaltyCode(entry: BalanceLine, code: string): boolean {
+  return isCredit(entry) && entry.asset_code.toUpperCase() === code.toUpperCase()
 }
 
 function toRaw(entry: BalanceLine): HorizonBalance {
@@ -74,7 +81,11 @@ export async function getBalances(publicKey: string): Promise<AccountBalances> {
           stellarConfig.loyalty.code,
           stellarConfig.loyalty.issuer,
         ),
-      )?.balance ?? '0'
+      )?.balance ??
+      account.balances.find((b) =>
+        matchLoyaltyCode(b, stellarConfig.loyalty.code),
+      )?.balance ??
+      '0'
 
     return { xlm, usdc, loyalty, raw }
   } catch (error) {

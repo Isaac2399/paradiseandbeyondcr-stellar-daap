@@ -1,13 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import type { StoredUser } from './auth.js'
 import { AuthError } from './errors.js'
 
 export type UserStore = { users: StoredUser[] }
 
-const DATA_DIR = join(fileURLToPath(new URL('../data', import.meta.url)))
-const USERS_FILE = join(DATA_DIR, 'users.json')
+const USERS_FILE = join('data', 'users.json')
 const KV_KEY = 'stellar-web-app:users'
 
 export async function loadStore(): Promise<UserStore> {
@@ -57,19 +55,23 @@ function kvConfigured(): boolean {
 }
 
 function kvUrl(): string {
-  return (
+  return stripQuotes(
     process.env.KV_REST_API_URL ??
-    process.env.UPSTASH_REDIS_REST_URL ??
-    ''
+      process.env.UPSTASH_REDIS_REST_URL ??
+      '',
   )
 }
 
 function kvToken(): string {
-  return (
+  return stripQuotes(
     process.env.KV_REST_API_TOKEN ??
-    process.env.UPSTASH_REDIS_REST_TOKEN ??
-    ''
+      process.env.UPSTASH_REDIS_REST_TOKEN ??
+      '',
   )
+}
+
+function stripQuotes(value: string): string {
+  return value.replace(/^['"]+|['"]+$/g, '').trim()
 }
 
 async function kvCommand<T>(command: unknown[]): Promise<T> {
