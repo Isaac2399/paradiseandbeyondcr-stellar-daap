@@ -1,9 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { dispatchApi } from '../server/dispatchApi.ts'
+import { dispatchApi } from './dispatchApi.ts'
 
 type VercelRequest = IncomingMessage & {
   body?: unknown
-  query?: { path?: string | string[] }
 }
 
 export const config = {
@@ -14,10 +13,9 @@ export default async function handler(
   req: VercelRequest,
   res: ServerResponse,
 ) {
-  const path = requestPath(req)
   const result = await dispatchApi({
     method: req.method ?? 'GET',
-    path,
+    path: requestPath(req),
     cookie: req.headers.cookie,
     body: parseBody(req.body),
   })
@@ -35,9 +33,7 @@ function requestPath(req: VercelRequest): string {
   if (urlPath.startsWith('/api/')) {
     return urlPath
   }
-  const parts = req.query?.path
-  const suffix = Array.isArray(parts) ? parts.join('/') : (parts ?? '')
-  return suffix ? `/api/${suffix}` : '/api'
+  return '/api'
 }
 
 function parseBody(body: unknown): Record<string, unknown> {
