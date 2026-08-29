@@ -3,6 +3,7 @@
 import { WalletOverview } from "@/components/dashboard/WalletOverview";
 import { CreateInvoiceQR } from "@/components/merchant/CreateInvoiceQR";
 import { ScanAndPay } from "@/components/customer/ScanAndPay";
+import { SendByPublicKey } from "@/components/customer/SendByPublicKey";
 import { Store, User } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthContext";
 
@@ -40,10 +41,19 @@ export default function HomePage() {
         <WalletOverview publicKey={user.publicKey} />
 
         {user.role === "customer" ? (
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h2 className="text-lg font-semibold mb-4">Pagar con QR</h2>
-            <ScanAndPay />
-          </div>
+          <>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold mb-4">Enviar</h2>
+              <p className="text-sm text-slate-600 mb-4">
+                Pega la public key de la otra cuenta, elige monto y moneda.
+              </p>
+              <SendByPublicKey />
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <h2 className="text-lg font-semibold mb-4">Pagar con QR</h2>
+              <ScanAndPay />
+            </div>
+          </>
         ) : (
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h2 className="text-lg font-semibold mb-4">Cobrar / Generar Factura QR</h2>
