@@ -39,8 +39,10 @@ export const stellarConfig = {
     issuer: envValue('VITE_USDC_ISSUER') || MAINNET_USDC_ISSUER,
   },
   loyalty: {
-    code: envValue('VITE_LOYALTY_CODE', 'NEXT_PUBLIC_LOYALTY_CODE') || 'PUNTOS',
-    issuer: envValue('VITE_LOYALTY_ISSUER', 'NEXT_PUBLIC_LOYALTY_ISSUER'),
+    code: envValue('VITE_LOYALTY_CODE', 'NEXT_PUBLIC_LOYALTY_CODE') || 'ROJOS',
+    issuer:
+      envValue('VITE_LOYALTY_ISSUER', 'NEXT_PUBLIC_LOYALTY_ISSUER') ||
+      'GBSLP3N4R65KVUYBAKQL5XAU67ZFGTNO3WBXJXWGDCH5FM3TFBNKXPPW',
   },
   feeBumpApiUrl: envValue('VITE_FEE_BUMP_API_URL') || '/api/fee-bump',
   pointsPerUsdc: Number(envValue('VITE_POINTS_PER_USDC') || '10'),

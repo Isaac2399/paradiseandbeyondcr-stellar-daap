@@ -129,12 +129,7 @@ export async function ensureUserLoyaltyTrustline(userId: string): Promise<void> 
   if (!user?.secretKeyEnc) {
     return
   }
-  const { ensureLoyaltyTrustline, loyaltyAssetFromEnv } = await import(
-    './provisionAccount.js'
-  )
-  if (!loyaltyAssetFromEnv()) {
-    return
-  }
+  const { ensureLoyaltyTrustline } = await import('./provisionAccount.js')
   try {
     await ensureLoyaltyTrustline(decryptSecret(user.secretKeyEnc))
   } catch (error) {
