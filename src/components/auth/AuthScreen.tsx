@@ -1,7 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Store, User } from 'lucide-react'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { AuthApiError } from '@/lib/auth/api'
 import type { UserRole } from '@/types/user'
 
 export function AuthScreen() {
@@ -24,7 +23,7 @@ export function AuthScreen() {
         await register({ email, password, role })
       }
     } catch (err) {
-      setError(err instanceof AuthApiError ? err.message : 'No se pudo completar')
+      setError(readableError(err))
     } finally {
       setSubmitting(false)
     }
@@ -159,4 +158,18 @@ function RoleButton({
       {label}
     </button>
   )
+}
+
+function readableError(err: unknown): string {
+  if (err instanceof Error && err.message && err.message !== '[object Object]') {
+    return err.message
+  }
+  if (err && typeof err === 'object') {
+    try {
+      return JSON.stringify(err)
+    } catch {
+      return 'No se pudo completar'
+    }
+  }
+  return 'No se pudo completar'
 }

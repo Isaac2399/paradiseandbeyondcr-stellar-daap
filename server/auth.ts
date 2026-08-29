@@ -118,7 +118,10 @@ export async function authenticate(
 ): Promise<PublicUser> {
   const user = await findUserByEmail(email)
   if (!user || !verifyPassword(password, user.salt, user.passwordHash)) {
-    throw new AuthError('Email o contraseña incorrectos', 401)
+    throw new AuthError(
+      'Email o contraseña incorrectos. Las cuentas de tu PC no están en Vercel: usa Registro en este mismo enlace.',
+      401,
+    )
   }
   await ensureUserLoyaltyTrustline(user.id)
   return toPublicUser(user)
