@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
-import { dispatchApi } from './dispatchApi.ts'
+import { dispatchApi } from './dispatchApi.js'
 
 export function authApiPlugin(): Plugin {
   return {

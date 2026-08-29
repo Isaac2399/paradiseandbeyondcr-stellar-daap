@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { StoredUser } from './auth.ts'
-import { AuthError } from './auth.ts'
+import type { StoredUser } from './auth.js'
+import { AuthError } from './errors.js'
 
 export type UserStore = { users: StoredUser[] }
 

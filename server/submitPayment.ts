@@ -7,12 +7,13 @@ import {
   StrKey,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
-import { AuthError, secretKeyForUser } from './auth.ts'
+import { secretKeyForUser } from './auth.js'
+import { AuthError } from './errors.js'
 import {
   horizonUrl,
   loyaltyAssetFromEnv,
   networkPassphrase,
-} from './provisionAccount.ts'
+} from './provisionAccount.js'
 
 export async function submitCustodialPayment(input: {
   userId: string

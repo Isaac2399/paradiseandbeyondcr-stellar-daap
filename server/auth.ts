@@ -7,9 +7,10 @@ import {
   scryptSync,
   timingSafeEqual,
 } from 'node:crypto'
-import { StrKey } from '@stellar/stellar-sdk'
-import { provisionStellarAccount } from './provisionAccount.ts'
-import { loadStore, saveStore } from './userStore.ts'
+import { AuthError } from './errors.js'
+import { loadStore, saveStore } from './userStore.js'
+
+export { AuthError } from './errors.js'
 
 export type UserRole = 'customer' | 'merchant'
 
@@ -86,6 +87,7 @@ export async function createUser(input: {
 
   let keys: { publicKey: string; secretKey: string }
   try {
+    const { provisionStellarAccount } = await import('./provisionAccount.js')
     keys = await provisionStellarAccount()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo crear la cuenta Stellar'
@@ -125,7 +127,7 @@ export async function updateUserPublicKey(
   userId: string,
   publicKey: string,
 ): Promise<PublicUser> {
-  if (!StrKey.isValidEd25519PublicKey(publicKey)) {
+  if (!/^G[A-Z0-9]{55}$/.test(publicKey)) {
     throw new AuthError('La public key de Stellar no es válida', 400)
   }
   const store = await loadStore()
@@ -169,15 +171,6 @@ export async function userFromCookieHeader(
   }
   const user = await findUserById(userId)
   return user ? toPublicUser(user) : null
-}
-
-export class AuthError extends Error {
-  status: number
-  constructor(message: string, status: number) {
-    super(message)
-    this.name = 'AuthError'
-    this.status = status
-  }
 }
 
 export async function secretKeyForUser(userId: string): Promise<string> {

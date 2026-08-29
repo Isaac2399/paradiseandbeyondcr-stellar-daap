@@ -61,7 +61,16 @@ async function request(path: string, init: RequestInit): Promise<AppUser> {
       ...(init.headers ?? {}),
     },
   })
-  const body = (await response.json()) as AppUser & { error?: string }
+  const raw = await response.text()
+  let body: AppUser & { error?: string }
+  try {
+    body = raw ? (JSON.parse(raw) as AppUser & { error?: string }) : ({} as AppUser)
+  } catch {
+    throw new AuthApiError(
+      `El servidor respondió ${response.status} (no JSON). Revisa las funciones de Vercel.`,
+      response.status,
+    )
+  }
   if (!response.ok) {
     throw new AuthApiError(body.error ?? 'Error de autenticación', response.status)
   }
