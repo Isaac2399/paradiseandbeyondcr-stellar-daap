@@ -31,11 +31,6 @@ export async function provisionStellarAccount(): Promise<{
 
 export async function ensureLoyaltyTrustline(secretKey: string): Promise<void> {
   const asset = loyaltyAssetFromEnv()
-  if (!asset) {
-    throw new Error(
-      'Faltan LOYALTY_CODE y LOYALTY_ISSUER (o VITE_LOYALTY_CODE / VITE_LOYALTY_ISSUER) en el servidor. Sin eso no se abre la trustline.',
-    )
-  }
 
   const pair = Keypair.fromSecret(secretKey)
   const server = new Horizon.Server(horizonUrl())
@@ -104,21 +99,20 @@ export function horizonUrl(): string {
   )
 }
 
-export function loyaltyAssetFromEnv(): Asset | null {
-  const code = readEnv(
-    'LOYALTY_CODE',
-    'VITE_LOYALTY_CODE',
-    'NEXT_PUBLIC_LOYALTY_CODE',
-  )
-  const issuer = readEnv(
-    'LOYALTY_ISSUER',
-    'VITE_LOYALTY_ISSUER',
-    'NEXT_PUBLIC_LOYALTY_ISSUER',
-  )
+export function loyaltyAssetFromEnv(): Asset {
+  const code =
+    readEnv(
+      'LOYALTY_CODE',
+      'VITE_LOYALTY_CODE',
+      'NEXT_PUBLIC_LOYALTY_CODE',
+    ) || 'ROJOS'
+  const issuer =
+    readEnv(
+      'LOYALTY_ISSUER',
+      'VITE_LOYALTY_ISSUER',
+      'NEXT_PUBLIC_LOYALTY_ISSUER',
+    ) || 'GBSLP3N4R65KVUYBAKQL5XAU67ZFGTNO3WBXJXWGDCH5FM3TFBNKXPPW'
 
-  if (!code || !issuer) {
-    return null
-  }
   if (!StrKey.isValidEd25519PublicKey(issuer)) {
     throw new Error(
       'LOYALTY_ISSUER no es una public key de Stellar válida.',
