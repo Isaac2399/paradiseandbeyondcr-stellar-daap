@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Check, Copy, LogOut, Store, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { categoryLabel } from '@/lib/places/categories'
 
 export default function ProfilePage() {
   const { user, logout } = useAuth()
@@ -45,6 +46,16 @@ export default function ProfilePage() {
           )}
           {account.role === 'merchant' ? 'Empresa' : 'Cliente'}
         </div>
+        {account.role === 'merchant' && account.place ? (
+          <div>
+            <p className="text-xs text-app-muted">Local</p>
+            <p className="mt-1 text-sm">{account.place.name}</p>
+            <p className="mt-1 text-xs text-app-accent">
+              {categoryLabel(account.place.category)}
+            </p>
+            <p className="mt-1 text-xs text-white/70">{account.place.address}</p>
+          </div>
+        ) : null}
         <div>
           <p className="text-xs text-app-muted">Public key</p>
           <p className="mt-1 break-all font-mono text-xs text-white/80">

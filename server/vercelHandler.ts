@@ -52,7 +52,8 @@ function requestPath(req: VercelRequest): string {
     raw.startsWith('/auth/') ||
     raw === '/payments' ||
     raw.startsWith('/payments') ||
-    raw.startsWith('/sep24')
+    raw.startsWith('/sep24') ||
+    raw.startsWith('/places')
   ) {
     return `/api${raw}`
   }
@@ -85,7 +86,11 @@ async function readRequestBody(req: VercelRequest): Promise<Record<string, unkno
     return parsed
   }
   if (req.method === 'GET' || req.method === 'HEAD') {
-    return {}
+    const search = (req.url ?? '').split('?')[1]
+    if (!search) {
+      return {}
+    }
+    return Object.fromEntries(new URLSearchParams(search).entries())
   }
   const chunks: Buffer[] = []
   for await (const chunk of req) {

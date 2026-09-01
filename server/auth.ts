@@ -27,6 +27,14 @@ export type StoredUser = {
   publicKey: string
   secretKeyEnc?: string
   createdAt: string
+  place?: {
+    name: string
+    address: string
+    lat: number
+    lng: number
+    category?: string
+    note?: string
+  }
 }
 
 export type PublicUser = {
@@ -34,6 +42,7 @@ export type PublicUser = {
   email: string
   role: UserRole
   publicKey: string
+  place?: StoredUser['place']
 }
 
 function sessionSecret(): string {
@@ -51,6 +60,7 @@ export function toPublicUser(user: StoredUser): PublicUser {
     email: user.email,
     role: user.role,
     publicKey: user.publicKey,
+    place: user.place,
   }
 }
 
@@ -156,6 +166,45 @@ export async function updateUserPublicKey(
   user.publicKey = publicKey
   await saveStore(store)
   return toPublicUser(user)
+}
+
+export async function updateUserPlace(
+  userId: string,
+  place: StoredUser['place'] | null,
+): Promise<PublicUser> {
+  const store = await loadStore()
+  const user = store.users.find((entry) => entry.id === userId)
+  if (!user) {
+    throw new AuthError('No hay sesión', 401)
+  }
+  if (user.role !== 'merchant') {
+    throw new AuthError('Solo las cuentas de empresa pueden publicar un local', 403)
+  }
+  if (place === null) {
+    delete user.place
+  } else {
+    user.place = place
+  }
+  await saveStore(store)
+  return toPublicUser(user)
+}
+
+export async function listPublicPlaces(): Promise<
+  Array<NonNullable<StoredUser['place']> & { id: string }>
+> {
+  const store = await loadStore()
+  return store.users.flatMap((user) => {
+    if (user.role !== 'merchant' || !user.place) {
+      return []
+    }
+    return [
+      {
+        id: user.id,
+        ...user.place,
+        category: user.place.category || 'other',
+      },
+    ]
+  })
 }
 
 export function createSessionCookie(userId: string): string {
