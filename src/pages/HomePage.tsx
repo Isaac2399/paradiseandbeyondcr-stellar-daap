@@ -1,66 +1,83 @@
-"use client";
-
-import { WalletOverview } from "@/components/dashboard/WalletOverview";
-import { CreateInvoiceQR } from "@/components/merchant/CreateInvoiceQR";
-import { ScanAndPay } from "@/components/customer/ScanAndPay";
-import { SendByPublicKey } from "@/components/customer/SendByPublicKey";
-import { Store, User } from "lucide-react";
-import { useAuth } from "@/lib/auth/AuthContext";
+import { useEffect, useRef, useState } from 'react'
+import { AccountStrip } from '@/components/dashboard/AccountStrip'
+import { DashboardHero } from '@/components/dashboard/DashboardHero'
+import { CreateInvoiceQR } from '@/components/merchant/CreateInvoiceQR'
+import { ScanAndPay } from '@/components/customer/ScanAndPay'
+import { SendByPublicKey } from '@/components/customer/SendByPublicKey'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { stellarConfig } from '@/lib/stellar/config'
+import { useAccountBalances } from '@/lib/stellar/useAccountBalances'
 
 export default function HomePage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth()
+  const { balances, error } = useAccountBalances(user?.publicKey ?? '')
+  const [sendOpen, setSendOpen] = useState(false)
+  const sendRef = useRef<HTMLElement>(null)
+  const scanRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!sendOpen) {
+      return
+    }
+    sendRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [sendOpen])
 
   if (!user) {
-    return null;
+    return null
   }
 
+  const isCustomer = user.role === 'customer'
+
   return (
-    <main className="min-h-screen bg-slate-50 p-4 md:p-8 text-slate-900">
-      <div className="max-w-xl mx-auto space-y-6">
-        <div className="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-          <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{user.email}</p>
-            <p className="text-xs text-slate-500 flex items-center gap-1">
-              {user.role === "merchant" ? (
-                <Store className="w-3.5 h-3.5" />
-              ) : (
-                <User className="w-3.5 h-3.5" />
-              )}
-              {user.role === "merchant" ? "Empresa" : "Cliente"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void logout()}
-            className="text-sm text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg hover:bg-slate-100"
-          >
-            Salir
-          </button>
-        </div>
+    <div className="space-y-6">
+      <DashboardHero
+        user={user}
+        balances={balances}
+        error={error}
+        onScan={() =>
+          scanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+        onSend={() => setSendOpen(true)}
+      />
 
-        <WalletOverview publicKey={user.publicKey} />
+      <AccountStrip balances={balances} />
 
-        {user.role === "customer" ? (
-          <>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <h2 className="text-lg font-semibold mb-4">Enviar</h2>
-              <p className="text-sm text-slate-600 mb-4">
-                Pega la public key de la otra cuenta, elige monto y moneda.
-              </p>
-              <SendByPublicKey />
-            </div>
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-              <h2 className="text-lg font-semibold mb-4">Pagar con QR</h2>
-              <ScanAndPay />
-            </div>
-          </>
-        ) : (
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-            <h2 className="text-lg font-semibold mb-4">Cobrar / Generar Factura QR</h2>
-            <CreateInvoiceQR merchantPublicKey={user.publicKey} />
-          </div>
-        )}
-      </div>
-    </main>
-  );
+      {sendOpen ? (
+        <section
+          ref={sendRef}
+          id="enviar"
+          className="scroll-mt-4 rounded-[24px] bg-app-card p-5"
+        >
+          <h2 className="mb-2 text-[17px] font-semibold">
+            Enviar {stellarConfig.loyalty.code}
+          </h2>
+          <p className="mb-4 text-sm text-app-muted">
+            Transfiere en Testnet a otra public key. El asset por defecto es{' '}
+            {stellarConfig.loyalty.code}.
+          </p>
+          <SendByPublicKey defaultAsset={stellarConfig.loyalty.code} />
+        </section>
+      ) : null}
+
+      {isCustomer ? (
+        <section
+          ref={scanRef}
+          id="qr"
+          className="scroll-mt-4 rounded-[24px] bg-app-card p-5"
+        >
+          <h2 className="mb-4 text-[17px] font-semibold">Pagar con QR</h2>
+          <ScanAndPay />
+        </section>
+      ) : (
+        <section
+          ref={scanRef}
+          id="cobrar"
+          className="scroll-mt-4 rounded-[24px] bg-app-card p-5"
+        >
+          <h2 className="mb-4 text-[17px] font-semibold">Cobrar / Factura QR</h2>
+          <CreateInvoiceQR merchantPublicKey={user.publicKey} />
+        </section>
+      )}
+    </div>
+  )
 }

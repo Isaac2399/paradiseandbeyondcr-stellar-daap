@@ -1,0 +1,44 @@
+import { NavLink } from 'react-router-dom'
+import { Home, Map, UserRound } from 'lucide-react'
+
+const items = [
+  { to: '/', label: 'Inicio', icon: Home, end: true },
+  { to: '/map', label: 'Mapa', icon: Map, end: false },
+  { to: '/profile', label: 'Perfil', icon: UserRound, end: false },
+] as const
+
+export function BottomNav() {
+  return (
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-white/5 bg-black/90 backdrop-blur-md"
+      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+    >
+      <div className="mx-auto flex max-w-md items-stretch justify-around px-2 pt-1">
+        {items.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `flex min-w-16 flex-1 flex-col items-center gap-0.5 rounded-2xl px-2 py-2 text-[11px] font-medium transition-colors ${
+                isActive
+                  ? 'bg-white/10 text-app-accent'
+                  : 'text-white/70 hover:text-white'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <item.icon
+                  className={`h-5 w-5 ${isActive ? 'text-app-accent' : ''}`}
+                  strokeWidth={isActive ? 2.4 : 1.8}
+                />
+                {item.label}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </div>
+    </nav>
+  )
+}

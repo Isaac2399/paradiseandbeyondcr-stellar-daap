@@ -92,18 +92,20 @@ export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
 
         <button
           type="submit"
-          className="rounded-xl bg-blue-600 text-white py-2.5 text-sm font-medium hover:bg-blue-700"
+          className="rounded-xl bg-app-accent text-black py-2.5 text-sm font-medium"
         >
           Generar QR
         </button>
       </form>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
       {payloadText ? (
         <div className="grid justify-items-center gap-3">
-          <QRCodeSVG value={payloadText} size={280} level="M" includeMargin />
-          <pre className="w-full overflow-auto text-xs bg-slate-50 p-3 rounded-lg">
+          <div className="rounded-2xl bg-white p-3">
+            <QRCodeSVG value={payloadText} size={240} level="M" includeMargin />
+          </div>
+          <pre className="w-full overflow-auto text-xs bg-app-chip p-3 rounded-lg text-white/80">
             {payloadText}
           </pre>
         </div>

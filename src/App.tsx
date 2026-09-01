@@ -1,25 +1,13 @@
-import { AuthProvider, useAuth } from '@/lib/auth/AuthContext'
-import { AuthScreen } from '@/components/auth/AuthScreen'
-import HomePage from '@/pages/HomePage'
+import { BrowserRouter } from 'react-router-dom'
+import { AuthProvider } from '@/lib/auth/AuthContext'
+import { AppRoutes } from '@/routes/AppRoutes'
 
 export default function App() {
   return (
     <AuthProvider>
-      <Root />
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
     </AuthProvider>
   )
-}
-
-function Root() {
-  const { user, loading } = useAuth()
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-slate-50 grid place-items-center text-slate-600">
-        Cargando sesión…
-      </main>
-    )
-  }
-
-  return user ? <HomePage /> : <AuthScreen />
 }

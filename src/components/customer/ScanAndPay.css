@@ -2,9 +2,9 @@
   position: relative;
   min-height: 280px;
   overflow: hidden;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #2a2a2c;
+  background: #121212;
 }
 
 .qr-scanner video {
