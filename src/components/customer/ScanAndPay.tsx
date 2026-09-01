@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { Camera, CameraOff } from 'lucide-react'
 import { Html5Qrcode } from 'html5-qrcode'
 import {
   deserializePaymentPayload,
@@ -10,6 +11,28 @@ import { confirmPaymentWithFeeBump } from '@/lib/stellar/feeBump'
 import { stellarConfig } from '@/lib/stellar/config'
 import './ScanAndPay.css'
 
+const CAMERA_SESSION_KEY = 'stellar-pay:camera-allowed'
+
+function readCameraAllowed(): boolean {
+  try {
+    return sessionStorage.getItem(CAMERA_SESSION_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function writeCameraAllowed(allowed: boolean) {
+  try {
+    if (allowed) {
+      sessionStorage.setItem(CAMERA_SESSION_KEY, '1')
+    } else {
+      sessionStorage.removeItem(CAMERA_SESSION_KEY)
+    }
+  } catch {
+    // private mode
+  }
+}
+
 function shortKey(publicKey: string): string {
   return `${publicKey.slice(0, 6)}…${publicKey.slice(-6)}`
 }
@@ -20,6 +43,8 @@ export function ScanAndPay() {
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const handlingRef = useRef(false)
 
+  const [cameraOn, setCameraOn] = useState(false)
+  const [cameraAllowed, setCameraAllowed] = useState(readCameraAllowed)
   const [payload, setPayload] = useState<PaymentQrPayload | null>(null)
   const [pasted, setPasted] = useState('')
   const [scanError, setScanError] = useState<string | null>(null)
@@ -27,7 +52,7 @@ export function ScanAndPay() {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (payload) {
+    if (!cameraOn || payload) {
       return
     }
 
@@ -44,6 +69,7 @@ export function ScanAndPay() {
         }
         if (!cameras.length) {
           setScanError('No hay cámara. Pega el texto del QR abajo.')
+          setCameraOn(false)
           return
         }
         const rear = cameras.find((cam) =>
@@ -69,6 +95,7 @@ export function ScanAndPay() {
               handlingRef.current = true
               setScanError(null)
               setPayload(parsed)
+              setCameraOn(false)
             } catch (err) {
               setScanError(
                 err instanceof Error ? err.message : 'QR de pago inválido',
@@ -77,12 +104,17 @@ export function ScanAndPay() {
           },
           () => undefined,
         )
+        writeCameraAllowed(true)
+        setCameraAllowed(true)
         if (cancelled) {
           await stopScanner(scanner)
         }
       } catch {
         if (!cancelled) {
-          setScanError('No se pudo abrir la cámara. Pega el texto del QR abajo.')
+          setScanError(
+            'No se pudo abrir la cámara. Revisa el permiso del navegador o pega el texto del QR.',
+          )
+          setCameraOn(false)
         }
       }
     }
@@ -98,13 +130,23 @@ export function ScanAndPay() {
       void stopScanner(scanner)
       scannerRef.current = null
     }
-  }, [payload, scannerId])
+  }, [cameraOn, payload, scannerId])
+
+  function enableCamera() {
+    setScanError(null)
+    setCameraOn(true)
+  }
+
+  function disableCamera() {
+    setCameraOn(false)
+  }
 
   function usePastedPayload() {
     try {
       const parsed = deserializePaymentPayload(pasted)
       setScanError(null)
       setPayload(parsed)
+      setCameraOn(false)
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Payload inválido')
     }
@@ -132,8 +174,37 @@ export function ScanAndPay() {
 
   return (
     <div className="space-y-4">
-      {!payload ? (
+      {!payload && cameraOn ? (
         <div id={scannerId} className="qr-scanner" />
+      ) : null}
+
+      {!payload && !cameraOn ? (
+        <div className="space-y-3 rounded-2xl bg-app-chip p-4">
+          <p className="text-sm text-white/80">
+            {cameraAllowed
+              ? 'La cámara está apagada. Puedes encenderla otra vez en esta sesión.'
+              : 'La cámara está apagada. Al activarla el navegador pedirá permiso; lo recordamos solo en esta sesión.'}
+          </p>
+          <button
+            type="button"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-app-accent py-2.5 text-sm font-medium text-black"
+            onClick={enableCamera}
+          >
+            <Camera className="h-4 w-4" />
+            {cameraAllowed ? 'Encender cámara' : 'Activar cámara'}
+          </button>
+        </div>
+      ) : null}
+
+      {!payload && cameraOn ? (
+        <button
+          type="button"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-app-chip py-2.5 text-sm text-white/80"
+          onClick={disableCamera}
+        >
+          <CameraOff className="h-4 w-4" />
+          Apagar cámara
+        </button>
       ) : null}
 
       {!payload ? (
@@ -141,7 +212,7 @@ export function ScanAndPay() {
           <label className="grid gap-1 text-sm font-medium">
             Pegar texto del QR
             <textarea
-              className="rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs min-h-20"
+              className="min-h-20 rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs font-normal"
               value={pasted}
               onChange={(e) => setPasted(e.target.value)}
               placeholder="SP1|G...|10|ROJOS|ORD-1"
@@ -149,7 +220,7 @@ export function ScanAndPay() {
           </label>
           <button
             type="button"
-            className="rounded-xl border border-slate-200 px-4 py-2 text-sm"
+            className="rounded-xl bg-app-chip px-4 py-2 text-sm"
             onClick={usePastedPayload}
           >
             Usar payload
@@ -159,26 +230,26 @@ export function ScanAndPay() {
 
       {payload ? (
         <div className="space-y-4">
-          <dl className="divide-y divide-slate-200">
+          <dl className="divide-y divide-white/10">
             <div className="flex justify-between gap-4 py-3">
-              <dt className="text-slate-500">Comercio destino</dt>
+              <dt className="text-app-muted">Comercio destino</dt>
               <dd className="font-mono" title={payload.destination}>
                 {shortKey(payload.destination)}
               </dd>
             </div>
             <div className="flex justify-between gap-4 py-3">
-              <dt className="text-slate-500">Monto a pagar</dt>
+              <dt className="text-app-muted">Monto a pagar</dt>
               <dd>
                 {payload.amount} {payload.asset}
               </dd>
             </div>
             <div className="flex justify-between gap-4 py-3">
-              <dt className="text-slate-500">Concepto</dt>
+              <dt className="text-app-muted">Concepto</dt>
               <dd>{payload.memo || '—'}</dd>
             </div>
             {!isLoyaltyAsset(payload.asset) ? (
               <div className="flex justify-between gap-4 py-3">
-                <dt className="text-slate-500">Puntos que ganarás</dt>
+                <dt className="text-app-muted">Puntos que ganarás</dt>
                 <dd>
                   {points} {stellarConfig.loyalty.code}
                 </dd>
@@ -189,17 +260,20 @@ export function ScanAndPay() {
           <div className="flex gap-3">
             <button
               type="button"
-              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm"
+              className="flex-1 rounded-xl bg-app-chip py-2.5 text-sm"
               onClick={() => {
                 handlingRef.current = false
                 setPayload(null)
+                if (readCameraAllowed()) {
+                  setCameraOn(true)
+                }
               }}
             >
               Volver a escanear
             </button>
             <button
               type="button"
-              className="flex-1 rounded-xl bg-blue-600 text-white py-2.5 text-sm font-medium disabled:opacity-60"
+              className="flex-1 rounded-xl bg-app-accent py-2.5 text-sm font-medium text-black disabled:opacity-60"
               onClick={() => void onConfirm()}
               disabled={submitting}
             >
@@ -210,10 +284,12 @@ export function ScanAndPay() {
       ) : null}
 
       {!payload && scanError ? (
-        <p className="text-sm text-red-600">{scanError}</p>
+        <p className="text-sm text-red-400">{scanError}</p>
       ) : null}
 
-      {status ? <p className="text-sm text-slate-600 break-all">{status}</p> : null}
+      {status ? (
+        <p className="break-all text-sm text-white/70">{status}</p>
+      ) : null}
     </div>
   )
 }

@@ -5,12 +5,16 @@ import { confirmPaymentWithFeeBump } from '@/lib/stellar/feeBump'
 import { paymentAssetOptions } from '@/lib/stellar/qrPayload'
 import type { PaymentAssetCode } from '@/types/user'
 
-export function SendByPublicKey() {
+export function SendByPublicKey({
+  defaultAsset,
+}: {
+  defaultAsset?: PaymentAssetCode
+}) {
   const assetOptions = paymentAssetOptions()
   const [destination, setDestination] = useState('')
   const [amount, setAmount] = useState('')
   const [asset, setAsset] = useState<PaymentAssetCode>(
-    assetOptions[0]?.value ?? 'XLM',
+    defaultAsset ?? assetOptions[0]?.value ?? 'XLM',
   )
   const [memo, setMemo] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -109,15 +113,15 @@ export function SendByPublicKey() {
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-xl bg-blue-600 text-white py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-60 inline-flex items-center justify-center gap-2"
+        className="rounded-xl bg-app-accent text-black py-2.5 text-sm font-medium disabled:opacity-60 inline-flex items-center justify-center gap-2"
       >
         <Send className="w-4 h-4" />
         {submitting ? 'Enviando…' : 'Enviar'}
       </button>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
       {hash ? (
-        <p className="text-sm text-green-700 break-all">
+        <p className="text-sm text-green-400 break-all">
           Enviado. Hash: {hash}
         </p>
       ) : null}
