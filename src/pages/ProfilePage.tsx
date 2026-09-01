@@ -12,8 +12,10 @@ export default function ProfilePage() {
     return null
   }
 
+  const account = user
+
   async function copyKey() {
-    await navigator.clipboard.writeText(user.publicKey)
+    await navigator.clipboard.writeText(account.publicKey)
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1600)
   }
@@ -33,20 +35,20 @@ export default function ProfilePage() {
       <div className="space-y-3 rounded-[24px] bg-app-card p-4">
         <div>
           <p className="text-xs text-app-muted">Email</p>
-          <p className="mt-1 text-sm">{user.email}</p>
+          <p className="mt-1 text-sm">{account.email}</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          {user.role === 'merchant' ? (
+          {account.role === 'merchant' ? (
             <Store className="h-4 w-4 text-app-accent" />
           ) : (
             <User className="h-4 w-4 text-app-accent" />
           )}
-          {user.role === 'merchant' ? 'Empresa' : 'Cliente'}
+          {account.role === 'merchant' ? 'Empresa' : 'Cliente'}
         </div>
         <div>
           <p className="text-xs text-app-muted">Public key</p>
           <p className="mt-1 break-all font-mono text-xs text-white/80">
-            {user.publicKey}
+            {account.publicKey}
           </p>
           <button
             type="button"
