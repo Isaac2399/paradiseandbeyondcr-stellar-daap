@@ -13,9 +13,9 @@ export default function LoginPage() {
       description="Entra con el email y la contraseña de tu cuenta."
     >
       <LoginForm onSubmit={login} formatError={readableError} />
-      <p className="text-sm text-slate-600 text-center">
+      <p className="mt-6 text-center text-sm text-app-muted">
         ¿No tienes cuenta?{' '}
-        <Link to="/register" className="font-medium text-blue-600 hover:text-blue-700">
+        <Link to="/register" className="font-medium text-app-accent">
           Crear cuenta
         </Link>
       </p>

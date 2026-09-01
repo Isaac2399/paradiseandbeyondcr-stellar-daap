@@ -96,6 +96,14 @@ export async function getBalances(publicKey: string): Promise<AccountBalances> {
   }
 }
 
+export function hasUsdcTrustline(balances: AccountBalances): boolean {
+  return balances.raw.some(
+    (entry) =>
+      entry.assetCode?.toUpperCase() === stellarConfig.usdc.code.toUpperCase() &&
+      entry.assetIssuer === stellarConfig.usdc.issuer,
+  )
+}
+
 export function usdcAsset(): Asset {
   return new Asset(stellarConfig.usdc.code, stellarConfig.usdc.issuer)
 }

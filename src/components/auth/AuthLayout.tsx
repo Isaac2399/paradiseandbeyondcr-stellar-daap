@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
-const fieldClass =
-  'rounded-lg border border-slate-200 px-3 py-2 font-normal'
+export const fieldClass =
+  'w-full rounded-2xl border border-app-line bg-app-chip px-3 py-2.5 text-sm font-normal text-white outline-none placeholder:text-white/35'
 
 export function AuthLayout({
   title,
@@ -13,12 +13,15 @@ export function AuthLayout({
   children: ReactNode
 }) {
   return (
-    <main className="min-h-screen bg-slate-50 p-4 md:p-8 text-slate-900">
-      <div className="max-w-md mx-auto space-y-6">
-        <header className="space-y-1">
-          <p className="text-sm font-medium text-slate-500">Stellar Pay</p>
-          <h1 className="text-2xl font-semibold">{title}</h1>
-          <p className="text-sm text-slate-600">{description}</p>
+    <main className="min-h-dvh bg-app text-white">
+      <div
+        className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-10"
+        style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
+      >
+        <header className="mb-6 space-y-2">
+          <p className="text-sm font-medium text-app-accent">Stellar Pay</p>
+          <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+          <p className="text-sm text-app-muted">{description}</p>
         </header>
         {children}
       </div>
@@ -34,11 +37,9 @@ export function AuthField({
   children: ReactNode
 }) {
   return (
-    <label className="grid gap-1 text-sm font-medium">
+    <label className="grid gap-1.5 text-sm font-medium text-white/80">
       {label}
       {children}
     </label>
   )
 }
-
-export { fieldClass }

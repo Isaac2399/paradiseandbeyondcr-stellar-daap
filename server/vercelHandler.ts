@@ -48,7 +48,12 @@ function requestPath(req: VercelRequest): string {
   if (raw.startsWith('/api/')) {
     return raw
   }
-  if (raw.startsWith('/auth/') || raw === '/payments' || raw.startsWith('/payments')) {
+  if (
+    raw.startsWith('/auth/') ||
+    raw === '/payments' ||
+    raw.startsWith('/payments') ||
+    raw.startsWith('/sep24')
+  ) {
     return `/api${raw}`
   }
   return raw || '/api'

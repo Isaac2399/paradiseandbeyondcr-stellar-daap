@@ -12,6 +12,7 @@ interface ImportMetaEnv {
   readonly VITE_POINTS_PER_USDC?: string
   readonly VITE_POINTS_PER_XLM?: string
   readonly VITE_ONRAMP_WIDGET_URL?: string
+  readonly VITE_SEP24_HOME_DOMAIN?: string
   readonly NEXT_PUBLIC_STELLAR_NETWORK?: string
   readonly NEXT_PUBLIC_HORIZON_URL?: string
   readonly NEXT_PUBLIC_LOYALTY_CODE?: string

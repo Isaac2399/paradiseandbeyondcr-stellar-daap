@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { StrKey } from '@stellar/stellar-sdk'
 import { Send } from 'lucide-react'
+import { fieldClass } from '@/components/auth/AuthLayout'
 import { confirmPaymentWithFeeBump } from '@/lib/stellar/feeBump'
 import { paymentAssetOptions } from '@/lib/stellar/qrPayload'
 import type { PaymentAssetCode } from '@/types/user'
@@ -56,10 +57,10 @@ export function SendByPublicKey({
 
   return (
     <form className="grid gap-3" onSubmit={(event) => void onSubmit(event)}>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid gap-1.5 text-sm font-medium text-white/80">
         Public key destino
         <input
-          className="rounded-lg border border-slate-200 px-3 py-2 font-mono text-sm font-normal"
+          className={`${fieldClass} font-mono`}
           name="destination"
           value={destination}
           onChange={(e) => setDestination(e.target.value)}
@@ -69,10 +70,10 @@ export function SendByPublicKey({
         />
       </label>
 
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid gap-1.5 text-sm font-medium text-white/80">
         Monto
         <input
-          className="rounded-lg border border-slate-200 px-3 py-2 font-normal"
+          className={fieldClass}
           inputMode="decimal"
           name="amount"
           value={amount}
@@ -82,10 +83,10 @@ export function SendByPublicKey({
         />
       </label>
 
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid gap-1.5 text-sm font-medium text-white/80">
         Moneda
         <select
-          className="rounded-lg border border-slate-200 px-3 py-2 font-normal"
+          className={fieldClass}
           name="asset"
           value={asset}
           onChange={(e) => setAsset(e.target.value as PaymentAssetCode)}
@@ -98,10 +99,10 @@ export function SendByPublicKey({
         </select>
       </label>
 
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid gap-1.5 text-sm font-medium text-white/80">
         Concepto / Memo
         <input
-          className="rounded-lg border border-slate-200 px-3 py-2 font-normal"
+          className={fieldClass}
           name="memo"
           value={memo}
           onChange={(e) => setMemo(e.target.value)}
@@ -113,7 +114,7 @@ export function SendByPublicKey({
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-xl bg-app-accent text-black py-2.5 text-sm font-medium disabled:opacity-60 inline-flex items-center justify-center gap-2"
+        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
       >
         <Send className="w-4 h-4" />
         {submitting ? 'Enviando…' : 'Enviar'}
