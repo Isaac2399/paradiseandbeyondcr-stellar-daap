@@ -9,6 +9,7 @@ import {
 } from '@/lib/stellar/qrPayload'
 import { confirmPaymentWithFeeBump } from '@/lib/stellar/feeBump'
 import { stellarConfig } from '@/lib/stellar/config'
+import { fieldClass } from '@/components/auth/AuthLayout'
 import './ScanAndPay.css'
 
 const CAMERA_SESSION_KEY = 'stellar-pay:camera-allowed'
@@ -212,7 +213,7 @@ export function ScanAndPay() {
           <label className="grid gap-1 text-sm font-medium">
             Pegar texto del QR
             <textarea
-              className="min-h-20 rounded-lg border border-slate-200 px-3 py-2 font-mono text-xs font-normal"
+              className={`${fieldClass} min-h-20 font-mono text-xs`}
               value={pasted}
               onChange={(e) => setPasted(e.target.value)}
               placeholder="SP1|G...|10|ROJOS|ORD-1"

@@ -25,7 +25,7 @@ export function RegisterForm({ onSubmit, formatError }: RegisterFormProps) {
 
   return (
     <form
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4"
+      className="space-y-4 rounded-[28px] bg-app-card p-5"
       onSubmit={(event) =>
         void runSubmit(
           event,
@@ -60,7 +60,7 @@ export function RegisterForm({ onSubmit, formatError }: RegisterFormProps) {
       </AuthField>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Rol</legend>
+        <legend className="text-sm font-medium text-white/80">Rol</legend>
         <div className="grid grid-cols-2 gap-2">
           <RoleButton
             active={role === 'customer'}
@@ -77,7 +77,7 @@ export function RegisterForm({ onSubmit, formatError }: RegisterFormProps) {
         </div>
       </fieldset>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
       <AuthSubmitButton
         submitting={submitting}

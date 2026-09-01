@@ -10,6 +10,11 @@ import {
   userFromCookieHeader,
   type UserRole,
 } from './auth.js'
+import {
+  handleSep24Deposit,
+  handleSep24Transaction,
+  handleSep24Trustline,
+} from './sep24Api.js'
 
 export async function dispatchApi(input: {
   method: string
@@ -21,7 +26,12 @@ export async function dispatchApi(input: {
     return await route(input)
   } catch (error) {
     if (error instanceof AuthError) {
-      return { status: error.status, body: { error: error.message } }
+      return {
+        status: error.status,
+        body: error.code
+          ? { error: error.message, code: error.code }
+          : { error: error.message },
+      }
     }
     return { status: 500, body: { error: 'Error interno' } }
   }
@@ -95,6 +105,28 @@ async function route(input: {
       String(input.body.publicKey ?? ''),
     )
     return { status: 200, body: user }
+  }
+
+  if (path.startsWith('/api/sep24/')) {
+    const session = await userFromCookieHeader(input.cookie)
+    if (!session) {
+      return {
+        status: 401,
+        body: { error: 'No hay sesión', code: 'expired_session' },
+      }
+    }
+    if (method === 'POST' && path === '/api/sep24/deposit') {
+      return { status: 200, body: await handleSep24Deposit(session, input.body) }
+    }
+    if (method === 'POST' && path === '/api/sep24/transaction') {
+      return {
+        status: 200,
+        body: await handleSep24Transaction(session, input.body),
+      }
+    }
+    if (method === 'POST' && path === '/api/sep24/trustline') {
+      return { status: 200, body: await handleSep24Trustline(session) }
+    }
   }
 
   return { status: 404, body: { error: 'Ruta no encontrada' } }

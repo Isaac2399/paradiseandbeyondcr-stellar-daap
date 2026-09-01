@@ -7,10 +7,10 @@ import {
   Copy,
   ScanLine,
 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
-import { stellarConfig } from '@/lib/stellar/config'
 import { formatAmount } from '@/lib/stellar/useAccountBalances'
-import type { AccountBalances } from '@/lib/stellar/getBalances'
+import { hasUsdcTrustline, type AccountBalances } from '@/lib/stellar/getBalances'
+import { stellarConfig } from '@/lib/stellar/config'
+import { AddFundsSheet } from '@/components/dashboard/DepositOnRamp'
 import {
   displayNameFromEmail,
   handleFromEmail,
@@ -25,6 +25,7 @@ type DashboardHeroProps = {
   error: string | null
   onScan: () => void
   onSend: () => void
+  onDepositCompleted?: () => void
 }
 
 type AssetKey = 'loyalty' | 'xlm' | 'usdc'
@@ -35,6 +36,7 @@ export function DashboardHero({
   error,
   onScan,
   onSend,
+  onDepositCompleted,
 }: DashboardHeroProps) {
   const [asset, setAsset] = useState<AssetKey>('loyalty')
   const [copied, setCopied] = useState(false)
@@ -147,11 +149,13 @@ export function DashboardHero({
       </div>
 
       {receiveOpen ? (
-        <ReceiveSheet
+        <AddFundsSheet
           publicKey={user.publicKey}
           copied={copied}
+          hasUsdcTrustline={hasUsdcTrustline(balances)}
           onCopy={() => void copyPublicKey()}
           onClose={() => setReceiveOpen(false)}
+          onDepositCompleted={onDepositCompleted}
         />
       ) : null}
     </section>
@@ -176,59 +180,5 @@ function QuickAction({
       <Icon className="h-5 w-5" />
       {label}
     </button>
-  )
-}
-
-function ReceiveSheet({
-  publicKey,
-  copied,
-  onCopy,
-  onClose,
-}: {
-  publicKey: string
-  copied: boolean
-  onCopy: () => void
-  onClose: () => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="receive-title"
-    >
-      <div className="w-full max-w-md rounded-[28px] bg-app-card p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 id="receive-title" className="text-lg font-semibold">
-            Agregar / Recibir
-          </h2>
-          <button
-            type="button"
-            className="text-sm text-app-muted"
-            onClick={onClose}
-          >
-            Cerrar
-          </button>
-        </div>
-        <p className="mb-4 text-sm text-app-muted">
-          Comparte tu public key para recibir XLM, USDC o {stellarConfig.loyalty.code} en
-          Testnet.
-        </p>
-        <div className="mx-auto mb-4 w-fit rounded-2xl bg-white p-3">
-          <QRCodeSVG value={publicKey} size={200} level="M" includeMargin />
-        </div>
-        <p className="mb-3 break-all text-center font-mono text-xs text-white/70">
-          {publicKey}
-        </p>
-        <button
-          type="button"
-          onClick={onCopy}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black"
-        >
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? 'Public key copiada' : 'Copiar public key'}
-        </button>
-      </div>
-    </div>
   )
 }

@@ -13,9 +13,9 @@ export default function RegisterPage() {
       description="Regístrate con email y contraseña. La cuenta Stellar se crea sola en Testnet."
     >
       <RegisterForm onSubmit={register} formatError={readableError} />
-      <p className="text-sm text-slate-600 text-center">
+      <p className="mt-6 text-center text-sm text-app-muted">
         ¿Ya tienes cuenta?{' '}
-        <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700">
+        <Link to="/login" className="font-medium text-app-accent">
           Iniciar sesión
         </Link>
       </p>

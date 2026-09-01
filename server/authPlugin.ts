@@ -20,7 +20,11 @@ async function handleApi(
   next: () => void,
 ) {
   const url = req.url ?? ''
-  if (!url.startsWith('/api/auth') && !url.startsWith('/api/payments')) {
+  if (
+    !url.startsWith('/api/auth') &&
+    !url.startsWith('/api/payments') &&
+    !url.startsWith('/api/sep24')
+  ) {
     next()
     return
   }

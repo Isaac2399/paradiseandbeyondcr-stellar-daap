@@ -30,8 +30,20 @@ export async function provisionStellarAccount(): Promise<{
 }
 
 export async function ensureLoyaltyTrustline(secretKey: string): Promise<void> {
-  const asset = loyaltyAssetFromEnv()
+  await ensureAssetTrustline(secretKey, loyaltyAssetFromEnv())
+}
 
+export async function ensureUsdcTrustline(secretKey: string): Promise<void> {
+  await ensureAssetTrustline(secretKey, usdcAssetFromEnv())
+}
+
+export async function accountHasUsdcTrustline(publicKey: string): Promise<boolean> {
+  const server = new Horizon.Server(horizonUrl())
+  const account = await server.loadAccount(publicKey)
+  return hasTrustline(account, usdcAssetFromEnv())
+}
+
+async function ensureAssetTrustline(secretKey: string, asset: Asset): Promise<void> {
   const pair = Keypair.fromSecret(secretKey)
   const server = new Horizon.Server(horizonUrl())
   const account = await waitForAccount(pair.publicKey())
@@ -54,7 +66,7 @@ export async function ensureLoyaltyTrustline(secretKey: string): Promise<void> {
   try {
     const result = await server.submitTransaction(transaction)
     if (!result.successful && result.successful !== undefined) {
-      throw new Error('Horizon rechazó la trustline del token de lealtad')
+      throw new Error(`Horizon rechazó la trustline de ${asset.getCode()}`)
     }
   } catch (error) {
     if (isAlreadyTrustedError(error)) {
@@ -105,6 +117,22 @@ export function horizonUrl(): string {
   } catch {
     return fallback
   }
+}
+
+const MAINNET_USDC_ISSUER =
+  'GA5ZSEJYB37JRC5RCJAELWUHTMYHMEKPVGFBMDLM5AH4VEKBE4SKZU7Z'
+const TESTNET_USDC_ISSUER =
+  'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5'
+
+export function usdcAssetFromEnv(): Asset {
+  const code = readEnv('VITE_USDC_CODE') || 'USDC'
+  const issuer =
+    readEnv('VITE_USDC_ISSUER') ||
+    (isPublicNetwork() ? MAINNET_USDC_ISSUER : TESTNET_USDC_ISSUER)
+  if (!StrKey.isValidEd25519PublicKey(issuer)) {
+    throw new Error('VITE_USDC_ISSUER no es una public key de Stellar válida.')
+  }
+  return new Asset(code, issuer)
 }
 
 export function loyaltyAssetFromEnv(): Asset {

@@ -14,7 +14,7 @@ export function LoginForm({ onSubmit, formatError }: LoginFormProps) {
 
   return (
     <form
-      className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4"
+      className="space-y-4 rounded-[28px] bg-app-card p-5"
       onSubmit={(event) =>
         void runSubmit(event, () => onSubmit({ email, password }), formatError)
       }
@@ -44,7 +44,7 @@ export function LoginForm({ onSubmit, formatError }: LoginFormProps) {
         />
       </AuthField>
 
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
 
       <AuthSubmitButton
         submitting={submitting}

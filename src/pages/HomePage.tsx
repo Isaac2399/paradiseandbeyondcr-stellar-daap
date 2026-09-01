@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AccountStrip } from '@/components/dashboard/AccountStrip'
+import { ActivityList } from '@/components/dashboard/ActivityList'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { CreateInvoiceQR } from '@/components/merchant/CreateInvoiceQR'
 import { ScanAndPay } from '@/components/customer/ScanAndPay'
@@ -7,10 +8,12 @@ import { SendByPublicKey } from '@/components/customer/SendByPublicKey'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { stellarConfig } from '@/lib/stellar/config'
 import { useAccountBalances } from '@/lib/stellar/useAccountBalances'
+import { useRecentActivity } from '@/lib/stellar/useRecentActivity'
 
 export default function HomePage() {
   const { user } = useAuth()
-  const { balances, error } = useAccountBalances(user?.publicKey ?? '')
+  const { balances, error, reload } = useAccountBalances(user?.publicKey ?? '')
+  const activity = useRecentActivity(user?.publicKey ?? '')
   const [sendOpen, setSendOpen] = useState(false)
   const sendRef = useRef<HTMLElement>(null)
   const scanRef = useRef<HTMLElement>(null)
@@ -38,9 +41,17 @@ export default function HomePage() {
           scanRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
         onSend={() => setSendOpen(true)}
+        onDepositCompleted={() => void reload()}
       />
 
       <AccountStrip balances={balances} />
+
+      <ActivityList
+        publicKey={user.publicKey}
+        items={activity.items}
+        loading={activity.loading}
+        error={activity.error}
+      />
 
       {sendOpen ? (
         <section
@@ -74,7 +85,13 @@ export default function HomePage() {
           id="cobrar"
           className="scroll-mt-4 rounded-[24px] bg-app-card p-5"
         >
-          <h2 className="mb-4 text-[17px] font-semibold">Cobrar / Factura QR</h2>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-app-accent">
+            Empresa
+          </p>
+          <h2 className="mb-1 text-[17px] font-semibold">Cobrar / Factura QR</h2>
+          <p className="mb-4 text-sm text-app-muted">
+            Genera un QR para que el cliente pague en Testnet.
+          </p>
           <CreateInvoiceQR merchantPublicKey={user.publicKey} />
         </section>
       )}

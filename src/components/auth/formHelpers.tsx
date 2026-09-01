@@ -15,10 +15,10 @@ export function RoleButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 py-2 rounded-lg text-sm border ${
+      className={`flex items-center justify-center gap-2 rounded-2xl py-2.5 text-sm font-medium ${
         active
-          ? 'bg-blue-600 text-white border-blue-600'
-          : 'bg-white text-slate-700 border-slate-200'
+          ? 'bg-app-accent text-black'
+          : 'bg-app-chip text-white/80'
       }`}
     >
       {icon}
@@ -40,7 +40,7 @@ export function AuthSubmitButton({
     <button
       type="submit"
       disabled={submitting}
-      className="w-full rounded-xl bg-blue-600 text-white py-2.5 text-sm font-medium disabled:opacity-60"
+      className="w-full rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
     >
       {submitting ? busyLabel : idleLabel}
     </button>

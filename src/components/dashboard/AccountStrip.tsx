@@ -7,25 +7,43 @@ type AccountStripProps = {
 }
 
 export function AccountStrip({ balances }: AccountStripProps) {
+  const loyaltyCode = stellarConfig.loyalty.code
+  const hasLoyaltyLine = balances.raw.some(
+    (entry) => entry.assetCode?.toUpperCase() === loyaltyCode.toUpperCase(),
+  )
+
   const cards = [
-    { label: stellarConfig.loyalty.code, value: balances.loyalty },
-    { label: 'XLM', value: balances.xlm },
-    { label: 'USDC', value: balances.usdc },
+    {
+      label: loyaltyCode,
+      value: balances.loyalty,
+      hint: hasLoyaltyLine ? 'Token de lealtad' : 'Sin trustline',
+    },
+    {
+      label: 'XLM',
+      value: balances.xlm,
+      hint: 'Nativo',
+    },
+    {
+      label: 'USDC',
+      value: balances.usdc,
+      hint: 'Testnet',
+    },
   ]
 
   return (
     <section className="space-y-3">
-      <h2 className="text-[17px] font-semibold">Cuentas</h2>
+      <h2 className="text-[17px] font-semibold">Activos</h2>
       <div className="flex gap-3 overflow-x-auto pb-1">
         {cards.map((card) => (
           <div
             key={card.label}
-            className="min-w-28 shrink-0 rounded-[20px] bg-app-card p-4"
+            className="min-w-[7.5rem] shrink-0 rounded-[20px] bg-app-card p-4"
           >
             <p className="text-xs text-app-muted">{card.label}</p>
             <p className="mt-2 text-lg font-semibold tabular-nums">
               {formatAmount(card.value)}
             </p>
+            <p className="mt-1 text-[11px] text-app-muted">{card.hint}</p>
           </div>
         ))}
       </div>

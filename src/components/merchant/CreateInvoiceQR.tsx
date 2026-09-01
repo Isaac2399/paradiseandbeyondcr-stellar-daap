@@ -5,6 +5,7 @@ import {
   serializePaymentPayload,
 } from '@/lib/stellar/qrPayload'
 import { stellarConfig } from '@/lib/stellar/config'
+import { fieldClass } from '@/components/auth/AuthLayout'
 import type { PaymentAssetCode } from '@/types/user'
 
 type CreateInvoiceQRProps = {
@@ -42,17 +43,17 @@ export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
   return (
     <div className="space-y-4">
       {!stellarConfig.loyalty.issuer ? (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <p className="rounded-2xl bg-app-chip px-3 py-2 text-sm text-app-muted">
           Configura el issuer de {stellarConfig.loyalty.code} en .env.local para
           cobrar con ese token.
         </p>
       ) : null}
 
       <form className="grid gap-3" onSubmit={onSubmit}>
-        <label className="grid gap-1 text-sm font-medium">
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
           Monto
           <input
-            className="rounded-lg border border-slate-200 px-3 py-2 font-normal"
+            className={fieldClass}
             inputMode="decimal"
             name="amount"
             value={amount}
@@ -62,10 +63,10 @@ export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
           />
         </label>
 
-        <label className="grid gap-1 text-sm font-medium">
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
           Moneda
           <select
-            className="rounded-lg border border-slate-200 px-3 py-2 font-normal"
+            className={fieldClass}
             name="asset"
             value={asset}
             onChange={(e) => setAsset(e.target.value as PaymentAssetCode)}
@@ -78,10 +79,10 @@ export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
           </select>
         </label>
 
-        <label className="grid gap-1 text-sm font-medium">
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
           Concepto / Memo
           <input
-            className="rounded-lg border border-slate-200 px-3 py-2 font-normal"
+            className={fieldClass}
             name="memo"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
@@ -92,7 +93,7 @@ export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
 
         <button
           type="submit"
-          className="rounded-xl bg-app-accent text-black py-2.5 text-sm font-medium"
+          className="rounded-2xl bg-app-accent py-3 text-sm font-medium text-black"
         >
           Generar QR
         </button>
