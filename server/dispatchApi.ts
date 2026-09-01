@@ -6,8 +6,10 @@ import {
   createSessionCookie,
   createUser,
   ensureUserLoyaltyTrustline,
+  updateUserPlace,
   updateUserPublicKey,
   userFromCookieHeader,
+  listPublicPlaces,
   type UserRole,
 } from './auth.js'
 import {
@@ -15,6 +17,7 @@ import {
   handleSep24Transaction,
   handleSep24Trustline,
 } from './sep24Api.js'
+import { parsePlaceBody, reverseNominatim, searchNominatim } from './places.js'
 
 export async function dispatchApi(input: {
   method: string
@@ -43,7 +46,7 @@ async function route(input: {
   cookie?: string
   body: Record<string, unknown>
 }): Promise<{ status: number; body: unknown; setCookie?: string }> {
-  const path = input.path.split('?')[0] ?? input.path
+  const path = (input.path.split('?')[0] ?? input.path).replace(/\/$/, '') || '/'
   const method = input.method.toUpperCase()
 
   if (method === 'POST' && path === '/api/payments') {
@@ -104,6 +107,61 @@ async function route(input: {
       session.id,
       String(input.body.publicKey ?? ''),
     )
+    return { status: 200, body: user }
+  }
+
+  if (method === 'GET' && path === '/api/places') {
+    const session = await userFromCookieHeader(input.cookie)
+    if (!session) {
+      return { status: 401, body: { error: 'No hay sesión' } }
+    }
+    return { status: 200, body: { places: await listPublicPlaces() } }
+  }
+
+  if (method === 'GET' && path === '/api/places/search') {
+    const session = await userFromCookieHeader(input.cookie)
+    if (!session) {
+      return { status: 401, body: { error: 'No hay sesión' } }
+    }
+    if (session.role !== 'merchant') {
+      return { status: 403, body: { error: 'Solo empresas pueden buscar direcciones' } }
+    }
+    const hits = await searchNominatim(String(input.body.q ?? ''))
+    return { status: 200, body: { hits } }
+  }
+
+  if (method === 'POST' && path === '/api/places/reverse') {
+    const session = await userFromCookieHeader(input.cookie)
+    if (!session) {
+      return { status: 401, body: { error: 'No hay sesión' } }
+    }
+    if (session.role !== 'merchant') {
+      return { status: 403, body: { error: 'Solo empresas pueden fijar el pin' } }
+    }
+    const lat = Number(input.body.lat)
+    const lng = Number(input.body.lng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return { status: 400, body: { error: 'Coordenadas no válidas' } }
+    }
+    const address = await reverseNominatim(lat, lng)
+    return { status: 200, body: { address, lat, lng } }
+  }
+
+  if (method === 'PUT' && path === '/api/places') {
+    const session = await userFromCookieHeader(input.cookie)
+    if (!session) {
+      return { status: 401, body: { error: 'No hay sesión' } }
+    }
+    const user = await updateUserPlace(session.id, parsePlaceBody(input.body))
+    return { status: 200, body: user }
+  }
+
+  if (method === 'DELETE' && path === '/api/places') {
+    const session = await userFromCookieHeader(input.cookie)
+    if (!session) {
+      return { status: 401, body: { error: 'No hay sesión' } }
+    }
+    const user = await updateUserPlace(session.id, null)
     return { status: 200, body: user }
   }
 

@@ -23,16 +23,20 @@ async function handleApi(
   if (
     !url.startsWith('/api/auth') &&
     !url.startsWith('/api/payments') &&
-    !url.startsWith('/api/sep24')
+    !url.startsWith('/api/sep24') &&
+    !url.startsWith('/api/places')
   ) {
     next()
     return
   }
 
   try {
-    const path = url.split('?')[0] ?? url
+    const parsedUrl = new URL(url, 'http://local')
+    const path = parsedUrl.pathname
     const body =
-      req.method === 'GET' || req.method === 'HEAD' ? {} : await readJson(req)
+      req.method === 'GET' || req.method === 'HEAD'
+        ? Object.fromEntries(parsedUrl.searchParams.entries())
+        : await readJson(req)
     const result = await dispatchApi({
       method: req.method ?? 'GET',
       path,

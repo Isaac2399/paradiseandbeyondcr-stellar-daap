@@ -27,6 +27,7 @@ type AuthContextValue = {
   }) => Promise<void>
   logout: () => Promise<void>
   syncPublicKey: (publicKey: string) => Promise<void>
+  setUser: (user: AppUser | null) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, syncPublicKey }),
+    () => ({ user, loading, login, register, logout, syncPublicKey, setUser }),
     [user, loading, login, register, logout, syncPublicKey],
   )
 

@@ -1,0 +1,236 @@
+import { useEffect, useState } from 'react'
+import { MapPin, Search } from 'lucide-react'
+import { fieldClass } from '@/components/auth/AuthLayout'
+import {
+  DarkLeafletMap,
+  DEFAULT_MAP_CENTER,
+} from '@/components/map/DarkLeafletMap'
+import {
+  deleteBusinessPlace,
+  reversePlace,
+  saveBusinessPlace,
+  searchPlaceQuery,
+  type GeocodeHit,
+} from '@/lib/places/api'
+import { readableError } from '@/lib/auth/readableError'
+import type { AppUser, BusinessPlace } from '@/types/user'
+import {
+  BUSINESS_CATEGORIES,
+  isBusinessCategory,
+} from '@/lib/places/categories'
+
+export function MerchantPlaceEditor({
+  user,
+  onSaved,
+}: {
+  user: AppUser
+  onSaved: (next: AppUser) => void
+}) {
+  const saved = user.place
+  const [name, setName] = useState(saved?.name ?? '')
+  const [address, setAddress] = useState(saved?.address ?? '')
+  const [note, setNote] = useState(saved?.note ?? '')
+  const [category, setCategory] = useState(saved?.category ?? 'restaurant')
+  const [lat, setLat] = useState(saved?.lat ?? DEFAULT_MAP_CENTER[0])
+  const [lng, setLng] = useState(saved?.lng ?? DEFAULT_MAP_CENTER[1])
+  const [pinned, setPinned] = useState(Boolean(saved))
+  const [hits, setHits] = useState<GeocodeHit[]>([])
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 3) {
+      setHits([])
+      return
+    }
+    const id = window.setTimeout(() => {
+      void searchPlaceQuery(q)
+        .then(setHits)
+        .catch(() => setHits([]))
+    }, 420)
+    return () => window.clearTimeout(id)
+  }, [query])
+
+  function applyHit(hit: GeocodeHit) {
+    setAddress(hit.label)
+    setQuery('')
+    setHits([])
+    setLat(hit.lat)
+    setLng(hit.lng)
+    setPinned(true)
+  }
+
+  async function onMapClick(nextLat: number, nextLng: number) {
+    setLat(nextLat)
+    setLng(nextLng)
+    setPinned(true)
+    try {
+      const reversed = await reversePlace(nextLat, nextLng)
+      setAddress(reversed.address)
+    } catch {
+      setAddress(`${nextLat.toFixed(5)}, ${nextLng.toFixed(5)}`)
+    }
+  }
+
+  async function onSave() {
+    setSaving(true)
+    setError(null)
+    setStatus(null)
+    const place: BusinessPlace = {
+      name: name.trim(),
+      address: address.trim(),
+      lat,
+      lng,
+      category,
+      note: note.trim() || undefined,
+    }
+    try {
+      onSaved(await saveBusinessPlace(place))
+      setStatus('Local publicado. Los clientes ya pueden verlo en el mapa.')
+      setPinned(true)
+    } catch (err) {
+      setError(readableError(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function onRemove() {
+    setSaving(true)
+    setError(null)
+    try {
+      onSaved(await deleteBusinessPlace())
+      setPinned(false)
+      setStatus('Quitamos tu local del mapa.')
+    } catch (err) {
+      setError(readableError(err))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="overflow-hidden rounded-[24px] bg-app-card">
+        <div className="h-72">
+          <DarkLeafletMap
+            markers={
+              pinned
+                ? [{ id: 'mine', lat, lng, selected: true }]
+                : []
+            }
+            center={[lat, lng]}
+            zoom={pinned ? 15 : 13}
+            onMapClick={(nextLat, nextLng) => void onMapClick(nextLat, nextLng)}
+          />
+        </div>
+        <p className="px-4 py-3 text-xs text-app-muted">
+          Toca el mapa para dejar el pin, o busca la dirección abajo.
+        </p>
+      </div>
+
+      <div className="space-y-3 rounded-[24px] bg-app-card p-4">
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
+          Nombre del negocio
+          <input
+            className={fieldClass}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Café Estrella"
+          />
+        </label>
+
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
+          Tipo de negocio
+          <select
+            className={fieldClass}
+            value={isBusinessCategory(category) ? category : 'other'}
+            onChange={(event) => setCategory(event.target.value)}
+          >
+            {BUSINESS_CATEGORIES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
+          Buscar dirección
+          <span className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-app-muted" />
+            <input
+              className={`${fieldClass} pl-10`}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Calle, barrio, ciudad"
+            />
+          </span>
+        </label>
+
+        {hits.length > 0 ? (
+          <ul className="overflow-hidden rounded-2xl bg-app-chip">
+            {hits.map((hit) => (
+              <li key={`${hit.lat}-${hit.lng}-${hit.label}`}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-2 px-3 py-2.5 text-left text-sm hover:bg-white/5"
+                  onClick={() => applyHit(hit)}
+                >
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-app-accent" />
+                  <span className="text-white/85">{hit.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
+          Dirección publicada
+          <textarea
+            className={`${fieldClass} min-h-20`}
+            value={address}
+            onChange={(event) => setAddress(event.target.value)}
+            placeholder="Se completa al buscar o al tocar el mapa"
+          />
+        </label>
+
+        <label className="grid gap-1.5 text-sm font-medium text-white/80">
+          Nota (opcional)
+          <input
+            className={fieldClass}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="Horario, piso, cómo entrar…"
+            maxLength={140}
+          />
+        </label>
+
+        {error ? <p className="text-sm text-red-400">{error}</p> : null}
+        {status ? <p className="text-sm text-green-400">{status}</p> : null}
+
+        <button
+          type="button"
+          onClick={() => void onSave()}
+          disabled={saving}
+          className="w-full rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
+        >
+          {saving ? 'Guardando…' : 'Publicar en el mapa'}
+        </button>
+        {saved ? (
+          <button
+            type="button"
+            onClick={() => void onRemove()}
+            disabled={saving}
+            className="w-full rounded-2xl bg-app-chip py-3 text-sm text-white/70"
+          >
+            Quitar del mapa
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
