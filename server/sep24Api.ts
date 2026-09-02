@@ -4,7 +4,12 @@ import {
   accountHasUsdcTrustline,
   ensureUsdcTrustline,
 } from './provisionAccount.js'
-import { startInteractiveDeposit, getSep24Transaction } from './sep/sep24.js'
+import {
+  getUsdcDepositLimits,
+  parseSep24Amount,
+  startInteractiveDeposit,
+  getSep24Transaction,
+} from './sep/sep24.js'
 
 export async function handleSep24Deposit(
   user: PublicUser,
@@ -20,8 +25,7 @@ export async function handleSep24Deposit(
     )
   }
 
-  const amountRaw = String(body.amount ?? '').trim()
-  const amount = amountRaw && /^\d+(\.\d{1,7})?$/.test(amountRaw) ? amountRaw : undefined
+  const amount = parseSep24Amount(String(body.amount ?? ''))
 
   const { interactive, toml } = await startInteractiveDeposit({
     publicKey: user.publicKey,
@@ -53,6 +57,15 @@ export async function handleSep24Transaction(
     id,
   })
   return { transaction }
+}
+
+export async function handleSep24Info() {
+  const limits = await getUsdcDepositLimits()
+  return {
+    assetCode: 'USDC',
+    minAmount: limits?.min ?? null,
+    maxAmount: limits?.max ?? null,
+  }
 }
 
 export async function handleSep24Trustline(user: PublicUser) {

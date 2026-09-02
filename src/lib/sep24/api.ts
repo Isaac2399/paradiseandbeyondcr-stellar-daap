@@ -1,4 +1,5 @@
 import type {
+  Sep24AmountLimits,
   Sep24ErrorCode,
   Sep24InteractiveResponse,
   Sep24Transaction,
@@ -12,6 +13,29 @@ export class Sep24ApiError extends Error {
     this.name = 'Sep24ApiError'
     this.status = status
     this.code = code
+  }
+}
+
+export async function fetchSep24DepositLimits(): Promise<Sep24AmountLimits> {
+  const response = await fetch('/api/sep24/info', { credentials: 'include' })
+  const raw = await response.text()
+  type Envelope = Sep24AmountLimits & { error?: string; code?: string }
+  let parsed: Envelope
+  try {
+    parsed = raw ? (JSON.parse(raw) as Envelope) : ({} as Envelope)
+  } catch {
+    throw new Sep24ApiError(`El servidor respondió ${response.status}`, response.status)
+  }
+  if (!response.ok) {
+    throw new Sep24ApiError(
+      parsed.error || 'No se pudieron leer los límites del ancla',
+      response.status,
+      parsed.code,
+    )
+  }
+  return {
+    minAmount: typeof parsed.minAmount === 'number' ? parsed.minAmount : null,
+    maxAmount: typeof parsed.maxAmount === 'number' ? parsed.maxAmount : null,
   }
 }
 

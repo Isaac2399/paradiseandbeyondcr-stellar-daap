@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth/AuthContext'
 
 function SessionGate({ children }: { children: ReactNode }) {
   return (
-    <main className="grid min-h-dvh place-items-center bg-app text-app-muted">
+    <main className="grid min-h-dvh place-items-center bg-transparent text-app-muted">
       {children}
     </main>
   )

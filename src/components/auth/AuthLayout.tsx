@@ -13,7 +13,7 @@ export function AuthLayout({
   children: ReactNode
 }) {
   return (
-    <main className="min-h-dvh bg-app text-white">
+    <main className="min-h-dvh bg-transparent text-white">
       <div
         className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pb-10"
         style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}
