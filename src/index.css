@@ -21,8 +21,27 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-app);
+  background-color: #000000;
   color: #f5f5f7;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: transparent;
+  background-image: url("/cr-costa-rica.svg");
+  background-repeat: repeat-y;
+  background-position: center top;
+  background-size: min(28rem, 100vw) auto;
+  opacity: 0.42;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
 }
 
 .app-scroll {
