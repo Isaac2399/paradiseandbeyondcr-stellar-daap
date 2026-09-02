@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { dispatchApi } from './dispatchApi.js'
 
