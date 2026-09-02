@@ -10,17 +10,23 @@ import type { PaymentAssetCode } from '@/types/user'
 
 type CreateInvoiceQRProps = {
   merchantPublicKey: string
+  loyaltyBalance?: string
 }
 
-export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
+export function CreateInvoiceQR({
+  merchantPublicKey,
+  loyaltyBalance,
+}: CreateInvoiceQRProps) {
   const assetOptions = paymentAssetOptions()
   const [amount, setAmount] = useState('10.00')
   const [asset, setAsset] = useState<PaymentAssetCode>(
     assetOptions[0]?.value ?? 'USDC',
   )
   const [memo, setMemo] = useState('ORD-1234')
+  const [reward, setReward] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [payloadText, setPayloadText] = useState<string | null>(null)
+  const loyaltyCode = stellarConfig.loyalty.code
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -32,6 +38,7 @@ export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
         amount,
         asset,
         memo,
+        reward,
       })
       setPayloadText(encoded.qr)
     } catch (err) {
@@ -90,6 +97,27 @@ export function CreateInvoiceQR({ merchantPublicKey }: CreateInvoiceQRProps) {
             maxLength={28}
           />
         </label>
+
+        {stellarConfig.loyalty.issuer ? (
+          <label className="grid gap-1.5 text-sm font-medium text-white/80">
+            Regalo de {loyaltyCode} (opcional)
+            <input
+              className={fieldClass}
+              inputMode="decimal"
+              name="reward"
+              value={reward}
+              onChange={(e) => setReward(e.target.value)}
+              placeholder="Vacío = sin regalo"
+            />
+            <span className="text-xs font-normal text-app-muted">
+              Si el cliente paga el monto de esta factura, se le envían esos{' '}
+              {loyaltyCode} desde el saldo de la empresa
+              {loyaltyBalance != null
+                ? ` (ahora tienes ${loyaltyBalance}).`
+                : '.'}
+            </span>
+          </label>
+        ) : null}
 
         <button
           type="submit"

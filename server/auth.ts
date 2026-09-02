@@ -77,6 +77,13 @@ export async function findUserById(id: string): Promise<StoredUser | undefined> 
   return store.users.find((user) => user.id === id)
 }
 
+export async function findUserByPublicKey(
+  publicKey: string,
+): Promise<StoredUser | undefined> {
+  const store = await loadStore()
+  return store.users.find((user) => user.publicKey === publicKey)
+}
+
 export async function createUser(input: {
   email: string
   password: string

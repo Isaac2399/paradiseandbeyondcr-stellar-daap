@@ -3,6 +3,7 @@ import type { PaymentQrPayload } from './qrPayload'
 export type FeeBumpSubmitResult = {
   hash: string
   status: string
+  rewardHash?: string
 }
 
 /**
@@ -21,6 +22,7 @@ export async function confirmPaymentWithFeeBump(
       amount: payload.amount,
       asset: payload.asset,
       memo: payload.memo,
+      reward: payload.reward ?? '',
     }),
   })
 
