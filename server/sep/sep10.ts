@@ -46,11 +46,20 @@ export async function authenticateSep10(input: {
     throw new AuthError('El ancla no devolvió una transacción de desafío', 502)
   }
 
-  const signed = signChallenge({
-    xdr,
-    networkPassphrase: passphrase,
-    userSecret: input.secretKey,
-  })
+  let signed: string
+  try {
+    signed = signChallenge({
+      xdr,
+      networkPassphrase: passphrase || 'Test SDF Network ; September 2015',
+      userSecret: input.secretKey,
+    })
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error
+    }
+    const detail = error instanceof Error ? error.message : 'XDR inválido'
+    throw new AuthError(`No se pudo firmar el desafío SEP-10: ${detail}`, 502)
+  }
 
   const tokenRes = await fetch(toml.webAuthEndpoint, {
     method: 'POST',
@@ -92,7 +101,7 @@ function signChallenge(input: {
   networkPassphrase: string
   userSecret: string
 }): string {
-  const tx = TransactionBuilder.fromXDR(input.xdr, input.networkPassphrase)
+  const tx = TransactionBuilder.fromXdr(input.xdr, input.networkPassphrase)
   if (tx instanceof FeeBumpTransaction) {
     throw new AuthError('El desafío SEP-10 no es una transacción válida', 502)
   }
@@ -101,7 +110,7 @@ function signChallenge(input: {
   if (clientSecret) {
     tx.sign(Keypair.fromSecret(clientSecret))
   }
-  return tx.toXDR()
+  return tx.toXdr()
 }
 
 function jwtExpiryMs(token: string): number {

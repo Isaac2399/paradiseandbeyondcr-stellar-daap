@@ -2,8 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Banknote, Check, Copy, ExternalLink } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { stellarConfig } from '@/lib/stellar/config'
+import { fetchSep24DepositLimits } from '@/lib/sep24/api'
 import { useSep24Deposit } from '@/lib/sep24/useSep24Deposit'
-import type { Sep24Transaction } from '@/lib/sep24/types'
+import type { Sep24AmountLimits, Sep24Transaction } from '@/lib/sep24/types'
 
 type AddFundsSheetProps = {
   publicKey: string
@@ -104,6 +105,29 @@ function CashDepositPanel({
   const [amount, setAmount] = useState('')
   const [trustOk, setTrustOk] = useState(hasUsdcTrustline)
   const [iframeBlocked, setIframeBlocked] = useState(false)
+  const [limits, setLimits] = useState<Sep24AmountLimits>({
+    minAmount: 1,
+    maxAmount: 10,
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    void fetchSep24DepositLimits()
+      .then((next) => {
+        if (!cancelled && (next.minAmount != null || next.maxAmount != null)) {
+          setLimits({
+            minAmount: next.minAmount ?? 1,
+            maxAmount: next.maxAmount ?? 10,
+          })
+        }
+      })
+      .catch(() => {
+        // Keep the test-anchor fallback range.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (hasUsdcTrustline) {
@@ -122,17 +146,33 @@ function CashDepositPanel({
 
   async function onStart(event: FormEvent) {
     event.preventDefault()
-    const session = await deposit.start(amount.trim() || undefined)
+    const raw = amount.trim().replace(',', '.')
+    if (raw) {
+      const value = Number(raw)
+      const min = limits.minAmount ?? 1
+      const max = limits.maxAmount ?? 10
+      if (!Number.isFinite(value) || value < min || value > max) {
+        return
+      }
+    }
+    const session = await deposit.start(raw || undefined)
     if (session?.url) {
       window.open(session.url, 'sep24-deposit', 'noopener,noreferrer')
     }
   }
 
+  const min = limits.minAmount ?? 1
+  const max = limits.maxAmount ?? 10
+  const amountValue = Number(amount.trim().replace(',', '.'))
+  const amountOutOfRange =
+    Boolean(amount.trim()) &&
+    (!Number.isFinite(amountValue) || amountValue < min || amountValue > max)
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-app-muted">
         Depósito en efectivo vía SEP-24 (ancla tipo MoneyGram Access). Recibes
-        USDC de Testnet en tu cuenta.
+        USDC de Testnet. En el ancla de prueba el monto va de {min} a {max} USDC.
       </p>
 
       {needsTrustline && deposit.phase !== 'interactive' && deposit.phase !== 'completed' ? (
@@ -161,18 +201,25 @@ function CashDepositPanel({
       {showStartForm ? (
         <form className="space-y-3" onSubmit={(event) => void onStart(event)}>
           <label className="grid gap-1 text-sm">
-            Monto USDC (opcional)
+            Monto USDC (opcional, {min}–{max} en este ancla)
             <input
               className="rounded-2xl border border-app-line bg-app-chip px-3 py-2 text-sm"
               inputMode="decimal"
               value={amount}
               onChange={(event) => setAmount(event.target.value)}
-              placeholder="Ej. 20.00"
+              placeholder={`Ej. ${Math.min(max, Math.max(min, 5))}`}
             />
           </label>
+          {amountOutOfRange ? (
+            <p className="text-sm text-red-400">
+              El ancla de prueba acepta entre {min} y {max} USDC. Un valor como 20
+              lo rechaza.
+            </p>
+          ) : null}
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black"
+            disabled={deposit.phase === 'starting' || amountOutOfRange}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
           >
             <Banknote className="h-4 w-4" />
             Continuar con el ancla

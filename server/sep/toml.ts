@@ -1,3 +1,5 @@
+import { AuthError } from '../errors.js'
+
 export type AnchorToml = {
   homeDomain: string
   signingKey: string
@@ -26,11 +28,18 @@ export function sep24ClientSigningSecret(): string {
 
 export async function loadAnchorToml(homeDomain = sep24HomeDomain()): Promise<AnchorToml> {
   const url = `https://${homeDomain}/.well-known/stellar.toml`
-  const response = await fetch(url, {
-    headers: { Accept: 'text/plain, application/toml' },
-  })
+  let response: Response
+  try {
+    response = await fetch(url)
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'red'
+    throw new AuthError(`No se pudo leer stellar.toml del ancla: ${detail}`, 502)
+  }
   if (!response.ok) {
-    throw new Error(`No se pudo leer stellar.toml del ancla (${response.status})`)
+    throw new AuthError(
+      `No se pudo leer stellar.toml del ancla (${response.status})`,
+      502,
+    )
   }
   const text = await response.text()
   const scalars = parseTomlScalars(text)
@@ -40,14 +49,17 @@ export async function loadAnchorToml(homeDomain = sep24HomeDomain()): Promise<An
     trimSlash(scalars.TRANSFER_SERVER_SEP0024 ?? '') ||
     trimSlash(scalars.TRANSFER_SERVER ?? '')
   if (!webAuth || !transfer) {
-    throw new Error('El stellar.toml del ancla no declara SEP-10 / SEP-24')
+    throw new AuthError(
+      'El stellar.toml del ancla no declara SEP-10 / SEP-24',
+      502,
+    )
   }
   return {
     homeDomain,
     signingKey: scalars.SIGNING_KEY ?? '',
     webAuthEndpoint: webAuth,
     transferServerSep24: transfer,
-    networkPassphrase: scalars.NETWORK_PASSPHRASE ?? '',
+    networkPassphrase: scalars.NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015',
     usdcIssuer: usdc?.issuer ?? '',
   }
 }

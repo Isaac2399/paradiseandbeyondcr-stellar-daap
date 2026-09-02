@@ -14,10 +14,23 @@ import {
 } from './auth.js'
 import {
   handleSep24Deposit,
+  handleSep24Info,
   handleSep24Transaction,
   handleSep24Trustline,
 } from './sep24Api.js'
 import { parsePlaceBody, reverseNominatim, searchNominatim } from './places.js'
+
+function isAuthError(error: unknown): error is AuthError {
+  if (error instanceof AuthError) {
+    return true
+  }
+  return (
+    error instanceof Error &&
+    error.name === 'AuthError' &&
+    'status' in error &&
+    typeof (error as AuthError).status === 'number'
+  )
+}
 
 export async function dispatchApi(input: {
   method: string
@@ -28,7 +41,7 @@ export async function dispatchApi(input: {
   try {
     return await route(input)
   } catch (error) {
-    if (error instanceof AuthError) {
+    if (isAuthError(error)) {
       return {
         status: error.status,
         body: error.code
@@ -36,7 +49,12 @@ export async function dispatchApi(input: {
           : { error: error.message },
       }
     }
-    return { status: 500, body: { error: 'Error interno' } }
+    console.error('[api]', error)
+    const message =
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : 'Error interno'
+    return { status: 500, body: { error: message } }
   }
 }
 
@@ -172,6 +190,9 @@ async function route(input: {
         status: 401,
         body: { error: 'No hay sesión', code: 'expired_session' },
       }
+    }
+    if (method === 'GET' && path === '/api/sep24/info') {
+      return { status: 200, body: await handleSep24Info() }
     }
     if (method === 'POST' && path === '/api/sep24/deposit') {
       return { status: 200, body: await handleSep24Deposit(session, input.body) }

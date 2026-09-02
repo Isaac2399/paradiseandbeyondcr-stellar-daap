@@ -5,7 +5,12 @@ export const SEP24_TERMINAL = new Set([
   'refunded',
 ])
 
-export type Sep24ErrorCode = 'missing_trustline' | 'expired_session' | string
+export type Sep24AmountLimits = {
+  minAmount: number | null
+  maxAmount: number | null
+}
+
+export type Sep24ErrorCode = 'missing_trustline' | 'expired_session' | 'amount_out_of_range' | string
 
 export type Sep24InteractiveResponse = {
   id: string
