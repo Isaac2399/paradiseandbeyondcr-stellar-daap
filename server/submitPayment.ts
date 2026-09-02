@@ -7,7 +7,7 @@ import {
   StrKey,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
-import { secretKeyForUser } from './auth.js'
+import { secretKeyForUser, findUserByPublicKey } from './auth.js'
 import { AuthError } from './errors.js'
 import {
   horizonUrl,
@@ -21,7 +21,8 @@ export async function submitCustodialPayment(input: {
   amount: string
   asset: string
   memo?: string
-}): Promise<{ hash: string; status: string }> {
+  reward?: string
+}): Promise<{ hash: string; status: string; rewardHash?: string }> {
   if (!StrKey.isValidEd25519PublicKey(input.destination)) {
     throw new AuthError('La cuenta destino no es válida', 400)
   }
@@ -29,21 +30,100 @@ export async function submitCustodialPayment(input: {
     throw new AuthError('El monto no es válido', 400)
   }
 
+  const reward = parseReward(input.reward)
   const source = Keypair.fromSecret(await secretKeyForUser(input.userId))
+  if (source.publicKey() === input.destination) {
+    throw new AuthError('No puedes pagarte a ti mismo', 400)
+  }
+
   const asset = resolveAsset(input.asset)
+  const loyalty = loyaltyAssetFromEnv()
   const server = new Horizon.Server(horizonUrl())
-  const account = await server.loadAccount(source.publicKey())
   const passphrase = networkPassphrase()
   const sponsor = sponsorKeypair()
   const baseFee = String(await server.fetchBaseFee())
 
+  let merchantSecret: string | undefined
+  if (reward) {
+    if (!loyalty) {
+      throw new AuthError('El token de lealtad no está configurado', 400)
+    }
+    const merchant = await findUserByPublicKey(input.destination)
+    if (!merchant || merchant.role !== 'merchant') {
+      throw new AuthError(
+        'El regalo de puntos solo aplica si el destino es una empresa de Stellar Pay.',
+        400,
+      )
+    }
+    merchantSecret = await secretKeyForUser(merchant.id)
+    const merchantAccount = await server.loadAccount(merchant.publicKey)
+    const available = loyaltyBalance(merchantAccount, loyalty)
+    if (Number(available) < Number(reward)) {
+      throw new AuthError(
+        `La empresa no tiene suficientes ${loyalty.getCode()} para el regalo (tiene ${available}).`,
+        400,
+      )
+    }
+  }
+
+  const payment = await submitHorizonPayment({
+    server,
+    passphrase,
+    sponsor,
+    baseFee,
+    sourceSecret: source.secret(),
+    destination: input.destination,
+    asset,
+    amount: input.amount,
+    memo: input.memo,
+  })
+
+  if (!reward || !merchantSecret || !loyalty) {
+    return payment
+  }
+
+  try {
+    const gift = await submitHorizonPayment({
+      server,
+      passphrase,
+      sponsor,
+      baseFee,
+      sourceSecret: merchantSecret,
+      destination: source.publicKey(),
+      asset: loyalty,
+      amount: reward,
+      memo: 'regalo',
+    })
+    return { ...payment, rewardHash: gift.hash }
+  } catch (error) {
+    const detail = error instanceof AuthError ? error.message : 'no se pudo enviar el regalo'
+    throw new AuthError(
+      `El pago se envió (${payment.hash}) pero el regalo de puntos falló: ${detail}`,
+      400,
+    )
+  }
+}
+
+async function submitHorizonPayment(input: {
+  server: Horizon.Server
+  passphrase: string
+  sponsor: Keypair | null
+  baseFee: string
+  sourceSecret: string
+  destination: string
+  asset: Asset
+  amount: string
+  memo?: string
+}): Promise<{ hash: string; status: string }> {
+  const source = Keypair.fromSecret(input.sourceSecret)
+  const account = await input.server.loadAccount(source.publicKey())
   const builder = new TransactionBuilder(account, {
-    fee: sponsor ? '0' : baseFee,
-    networkPassphrase: passphrase,
+    fee: input.sponsor ? '0' : input.baseFee,
+    networkPassphrase: input.passphrase,
   }).addOperation(
     Operation.payment({
       destination: input.destination,
-      asset,
+      asset: input.asset,
       amount: input.amount,
     }),
   )
@@ -56,23 +136,49 @@ export async function submitCustodialPayment(input: {
   inner.sign(source)
 
   try {
-    if (sponsor) {
+    if (input.sponsor) {
       const feeBump = TransactionBuilder.buildFeeBumpTransaction(
-        sponsor,
-        baseFee,
+        input.sponsor,
+        input.baseFee,
         inner,
-        passphrase,
+        input.passphrase,
       )
-      feeBump.sign(sponsor)
-      const result = await server.submitTransaction(feeBump)
+      feeBump.sign(input.sponsor)
+      const result = await input.server.submitTransaction(feeBump)
       return { hash: result.hash, status: 'success' }
     }
 
-    const result = await server.submitTransaction(inner)
+    const result = await input.server.submitTransaction(inner)
     return { hash: result.hash, status: 'success' }
   } catch (error) {
     throw new AuthError(horizonPaymentMessage(error), 400)
   }
+}
+
+function parseReward(raw: string | undefined): string | undefined {
+  const value = String(raw ?? '').trim()
+  if (!value) {
+    return undefined
+  }
+  if (!/^\d+(\.\d{1,7})?$/.test(value) || Number(value) <= 0) {
+    throw new AuthError('La cantidad de puntos de regalo no es válida', 400)
+  }
+  return value
+}
+
+function loyaltyBalance(
+  account: Horizon.AccountResponse,
+  asset: Asset,
+): string {
+  const line = account.balances.find((entry) => {
+    if (entry.asset_type === 'native' || entry.asset_type === 'liquidity_pool_shares') {
+      return false
+    }
+    return (
+      entry.asset_code === asset.getCode() && entry.asset_issuer === asset.getIssuer()
+    )
+  })
+  return line && 'balance' in line ? line.balance : '0'
 }
 
 function resolveAsset(code: string): Asset {

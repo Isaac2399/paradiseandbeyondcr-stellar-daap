@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MapPin, Navigation, Store } from 'lucide-react'
+import { MapPin, Navigation } from 'lucide-react'
 import { DarkLeafletMap } from '@/components/map/DarkLeafletMap'
 import { fetchPublicPlaces } from '@/lib/places/api'
 import { readableError } from '@/lib/auth/readableError'
@@ -104,33 +104,24 @@ export function CustomerPlacesMap() {
 
       <div className="overflow-hidden rounded-[24px] bg-app-card">
         <div className="h-72">
-          {hasAnyPlaces ? (
-            <DarkLeafletMap
-              markers={filtered.map((place) => ({
-                id: place.id,
-                lat: place.lat,
-                lng: place.lng,
-                selected: place.id === selected?.id,
-              }))}
-              onSelect={setSelectedId}
-            />
-          ) : (
-            <div className="grid h-full place-items-center px-6 text-center">
-              <div>
-                <Store className="mx-auto mb-3 h-9 w-9 text-app-accent" />
-                <p className="text-sm text-white/80">
-                  {loading
-                    ? 'Cargando locales…'
-                    : 'Todavía no hay negocios en el mapa.'}
-                </p>
-                <p className="mt-1 text-xs text-app-muted">
-                  Cuando una empresa publique su dirección, aparece aquí.
-                </p>
-              </div>
-            </div>
-          )}
+          <DarkLeafletMap
+            markers={filtered.map((place) => ({
+              id: place.id,
+              lat: place.lat,
+              lng: place.lng,
+              selected: place.id === selected?.id,
+            }))}
+            onSelect={setSelectedId}
+          />
         </div>
       </div>
+
+      {!hasAnyPlaces && !loading ? (
+        <p className="rounded-[24px] bg-app-card px-4 py-5 text-center text-sm text-app-muted">
+          Todavía no hay negocios publicados. Cuando una empresa fije su
+          dirección, el pin aparece aquí.
+        </p>
+      ) : null}
 
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
 

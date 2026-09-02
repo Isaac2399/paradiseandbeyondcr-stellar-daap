@@ -43,13 +43,21 @@ export function DarkLeafletMap({
 
     const map = L.map(host, {
       zoomControl: false,
-      attributionControl: true,
+      attributionControl: false,
     }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM)
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      maxZoom: 19,
-    }).addTo(map)
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 16 },
+    ).addTo(map)
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 16 },
+    ).addTo(map)
+    L.control
+      .attribution({ prefix: false, position: 'bottomleft' })
+      .addTo(map)
+      .addAttribution('Tiles © Esri')
     L.control.zoom({ position: 'bottomright' }).addTo(map)
 
     map.on('click', (event) => {
@@ -60,8 +68,11 @@ export function DarkLeafletMap({
     layerRef.current = L.layerGroup().addTo(map)
 
     const frame = window.requestAnimationFrame(() => map.invalidateSize())
+    const onResize = () => map.invalidateSize()
+    window.addEventListener('resize', onResize)
     return () => {
       window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', onResize)
       map.remove()
       mapRef.current = null
       layerRef.current = null
@@ -99,6 +110,7 @@ export function DarkLeafletMap({
       return
     }
     map.setView(center, zoom, { animate: false })
+    map.invalidateSize()
   }, [markers, center, zoom])
 
   return <div ref={hostRef} className="places-map h-full min-h-[280px] w-full" />

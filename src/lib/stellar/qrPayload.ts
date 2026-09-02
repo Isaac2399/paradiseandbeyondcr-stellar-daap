@@ -10,6 +10,8 @@ export type PaymentQrPayload = {
   amount: string
   asset: PaymentAssetCode
   memo: string
+  /** Optional ROJOS gift from the merchant, deducted from their balance. */
+  reward?: string
   assetIssuer?: string
 }
 
@@ -50,6 +52,7 @@ export function serializePaymentPayload(input: {
   amount: string
   asset: PaymentAssetCode
   memo: string
+  reward?: string
 }): { json: string; uri: string; qr: string; payload: PaymentQrPayload } {
   const payload = normalizePayload({
     version: QR_PAYLOAD_VERSION,
@@ -57,6 +60,7 @@ export function serializePaymentPayload(input: {
     amount: input.amount,
     asset: input.asset,
     memo: input.memo,
+    reward: input.reward,
   })
 
   return {
@@ -93,13 +97,17 @@ export function deserializePaymentPayload(raw: string): PaymentQrPayload {
 }
 
 export function toCompactQr(payload: PaymentQrPayload): string {
-  return [
+  const parts = [
     'SP1',
     payload.destination,
     payload.amount,
     payload.asset,
     encodeURIComponent(payload.memo),
-  ].join('|')
+  ]
+  if (payload.reward) {
+    parts.push(payload.reward)
+  }
+  return parts.join('|')
 }
 
 function fromCompactQr(raw: string): PaymentQrPayload {
@@ -111,20 +119,9 @@ function fromCompactQr(raw: string): PaymentQrPayload {
     destination: parts[1],
     amount: parts[2],
     asset: parts[3],
-    memo: decodeURIComponent(parts.slice(4).join('|') || ''),
+    memo: decodeURIComponent(parts[4] ?? ''),
+    reward: parts[5] ?? '',
   })
-}
-
-export function estimateLoyaltyPoints(amount: string, asset: PaymentAssetCode): string {
-  if (isLoyaltyAsset(asset)) {
-    return '0'
-  }
-  const value = Number(amount)
-  if (!Number.isFinite(value) || value <= 0) {
-    return '0'
-  }
-  const rate = asset === 'USDC' ? stellarConfig.pointsPerUsdc : stellarConfig.pointsPerXlm
-  return (Math.round(value * rate * 100) / 100).toString()
 }
 
 function allowedAssets(): Set<string> {
@@ -144,6 +141,7 @@ function normalizePayload(value: unknown): PaymentQrPayload {
   const amount = String(value.amount ?? '').trim()
   const asset = String(value.asset ?? '').trim().toUpperCase()
   const memo = String(value.memo ?? '').trim()
+  const rewardRaw = String(value.reward ?? '').trim()
 
   if (!StrKey.isValidEd25519PublicKey(destination)) {
     throw new QrPayloadError('La public key de destino no es válida')
@@ -162,6 +160,9 @@ function normalizePayload(value: unknown): PaymentQrPayload {
   if (byteLength(memo) > 28) {
     throw new QrPayloadError('El memo no puede superar 28 bytes (MEMO_TEXT)')
   }
+  if (rewardRaw && !isPositiveAmount(rewardRaw)) {
+    throw new QrPayloadError('La cantidad de puntos de regalo no es válida')
+  }
 
   const payload: PaymentQrPayload = {
     version: QR_PAYLOAD_VERSION,
@@ -169,6 +170,9 @@ function normalizePayload(value: unknown): PaymentQrPayload {
     amount: formatAmount(amount),
     asset,
     memo,
+  }
+  if (rewardRaw) {
+    payload.reward = formatAmount(rewardRaw)
   }
 
   if (asset === 'USDC') {
@@ -197,6 +201,9 @@ function toSep7Uri(payload: PaymentQrPayload): string {
     params.set('asset_code', stellarConfig.loyalty.code)
     params.set('asset_issuer', stellarConfig.loyalty.issuer)
   }
+  if (payload.reward) {
+    params.set('reward', payload.reward)
+  }
   return `${SEP7_SCHEME}?${params.toString()}`
 }
 
@@ -215,6 +222,7 @@ function fromSep7Uri(uri: string): PaymentQrPayload {
     amount: params.get('amount'),
     asset: assetCode,
     memo: params.get('memo') ?? '',
+    reward: params.get('reward') ?? '',
   })
 }
 

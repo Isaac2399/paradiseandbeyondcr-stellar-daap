@@ -3,8 +3,6 @@ import { Camera, CameraOff } from 'lucide-react'
 import { Html5Qrcode } from 'html5-qrcode'
 import {
   deserializePaymentPayload,
-  estimateLoyaltyPoints,
-  isLoyaltyAsset,
   type PaymentQrPayload,
 } from '@/lib/stellar/qrPayload'
 import { confirmPaymentWithFeeBump } from '@/lib/stellar/feeBump'
@@ -161,17 +159,16 @@ export function ScanAndPay() {
     setStatus(null)
     try {
       const result = await confirmPaymentWithFeeBump(payload)
-      setStatus(`Pago enviado. Hash: ${result.hash}`)
+      const gift = result.rewardHash
+        ? ` Regalo de ${payload.reward} ${stellarConfig.loyalty.code} enviado.`
+        : ''
+      setStatus(`Pago enviado. Hash: ${result.hash}.${gift}`)
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'No se pudo confirmar el pago')
     } finally {
       setSubmitting(false)
     }
   }
-
-  const points = payload
-    ? estimateLoyaltyPoints(payload.amount, payload.asset)
-    : '0'
 
   return (
     <div className="space-y-4">
@@ -248,11 +245,13 @@ export function ScanAndPay() {
               <dt className="text-app-muted">Concepto</dt>
               <dd>{payload.memo || '—'}</dd>
             </div>
-            {!isLoyaltyAsset(payload.asset) ? (
+            {payload.reward ? (
               <div className="flex justify-between gap-4 py-3">
-                <dt className="text-app-muted">Puntos que ganarás</dt>
+                <dt className="text-app-muted">
+                  Regalo de {stellarConfig.loyalty.code}
+                </dt>
                 <dd>
-                  {points} {stellarConfig.loyalty.code}
+                  {payload.reward} {stellarConfig.loyalty.code}
                 </dd>
               </div>
             ) : null}

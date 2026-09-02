@@ -92,7 +92,10 @@ export default function HomePage() {
           <p className="mb-4 text-sm text-app-muted">
             Genera un QR para que el cliente pague en Testnet.
           </p>
-          <CreateInvoiceQR merchantPublicKey={user.publicKey} />
+          <CreateInvoiceQR
+            merchantPublicKey={user.publicKey}
+            loyaltyBalance={balances.loyalty}
+          />
         </section>
       )}
     </div>

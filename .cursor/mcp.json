@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "stellar-raven": {
-      "url": "https://raven.stellar.buzz/mcp"
+      "url": "https://raven.stellar.org/mcp"
     }
   }
 }

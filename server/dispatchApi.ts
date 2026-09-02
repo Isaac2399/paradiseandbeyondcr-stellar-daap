@@ -78,6 +78,7 @@ async function route(input: {
       amount: String(input.body.amount ?? ''),
       asset: String(input.body.asset ?? ''),
       memo: String(input.body.memo ?? ''),
+      reward: String(input.body.reward ?? ''),
     })
     return { status: 200, body: result }
   }
