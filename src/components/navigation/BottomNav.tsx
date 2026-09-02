@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Map, UserRound } from 'lucide-react'
+import { CreditCard, Home, Map, UserRound } from 'lucide-react'
 
 const items = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
+  { to: '/card', label: 'Tarjeta', icon: CreditCard, end: false },
   { to: '/map', label: 'Mapa', icon: Map, end: false },
   { to: '/profile', label: 'Perfil', icon: UserRound, end: false },
 ] as const

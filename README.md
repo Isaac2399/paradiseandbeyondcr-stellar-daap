@@ -10,13 +10,14 @@ On sign-up, the server creates a Stellar keypair, funds it on Testnet, and store
 
 | Role | In the app |
 | --- | --- |
-| **Customer** | Balances (ROJOS, XLM, USDC), send, pay with QR, activity, USDC on-ramp (SEP-24), browse merchants on the map |
+| **Customer** | Balances (ROJOS, XLM, USDC), send, pay with QR, **virtual Visa**, activity, USDC on-ramp (SEP-24), browse merchants on the map |
 | **Merchant** | Same wallet features, plus **charge** (invoice QR) and **publish a venue** (address, category, map pin) |
 
 Routes:
 
 - `/login`, `/register` — guests
 - `/` — home (dashboard)
+- `/card` — virtual Visa (issue, freeze, limits, POS sandbox)
 - `/map` — map (merchants publish; customers filter by type)
 - `/profile` — session and public key
 
@@ -61,10 +62,11 @@ Do not commit `.env.local` or secret keys (`S…`).
 ## Layout
 
 ```
-src/                 UI, auth, Stellar (balances, payments, SEP-24 client)
-server/              Auth, custodial payments, SEP-10/24, places, KV
+src/                 UI, auth, Stellar (balances, payments, SEP-24 client), cards
+server/              Auth, custodial payments, card issuing sandbox, SEP-10/24, places, KV
 api/                 Vercel entry files that call server/vercelHandler.ts
 data/users.json      Local users (not for production)
+data/cards.json      Local cards + settlement history (not for production)
 ```
 
 HTTP routing lives in `server/dispatchApi.ts`. Locally it is mounted by `server/authPlugin.ts`. On Vercel, each file under `api/` re-exports the same handler.
@@ -80,6 +82,20 @@ HTTP routing lives in `server/dispatchApi.ts`. Locally it is mounted by `server/
 ## SEP-24 (USDC deposit)
 
 The **Add** button runs SEP-10 (server-side signing) and SEP-24 interactive deposit. To try without MoneyGram, use `testanchor.stellar.org`. MoneyGram Ramps requires allowlisting public keys / your domain.
+
+## Virtual Visa (sandbox)
+
+`/card` issues a virtual Visa tied to the signed-in user's custodial public key. The HTTP API is a local BaaS stand-in (Rain Cards–shaped) so production can swap the provider without changing the UI:
+
+- `POST /api/cards/issue`
+- `GET /api/cards/[id]` (also `GET /api/cards/me`)
+- `POST /api/cards/simulate-transaction`
+
+`simulate-transaction` checks USDC (or XLM in the sandbox datáfono), then debits the user's Testnet wallet to the platform treasury with `@stellar/stellar-sdk`. Approved charges store the Horizon `txHash` and a StellarExpert link. Insufficient funds, a frozen card, or a network error become a declined authorization.
+
+PAN / CVV stay encrypted on the server. The browser only receives them from `GET /api/cards/[id]/secure-details` after **Ver detalles**. Secret keys never go to the client.
+
+Optional env: `CARD_TREASURY_SECRET_KEY` (otherwise the server creates a Friendbot treasury), `CARD_DAILY_LIMIT_USD`, and later `RAIN_API_KEY` + `RAIN_API_BASE_URL`.
 
 ## Map
 
