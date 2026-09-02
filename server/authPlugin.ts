@@ -5,6 +5,7 @@ import { dispatchApi } from './dispatchApi.js'
 export function authApiPlugin(): Plugin {
   return {
     name: 'stellar-auth-api',
+    enforce: 'pre',
     configureServer(server) {
       server.middlewares.use(handleApi)
     },

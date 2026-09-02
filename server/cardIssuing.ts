@@ -87,10 +87,20 @@ export type CardIssuingProvider = {
 }
 
 const DEFAULT_DAILY_LIMIT = '500.00'
-const RESERVED_IDS = new Set(['issue', 'simulate-transaction', 'me'])
+const RESERVED_IDS = new Set([
+  'issue',
+  'simulate-transaction',
+  'me',
+  'freeze',
+  'unfreeze',
+  'secure-details',
+  'transactions',
+])
 
 export function getCardProvider(): CardIssuingProvider {
-  if (readEnv('RAIN_API_KEY') && readEnv('RAIN_API_BASE_URL')) {
+  // The Rain HTTP adapter is a stub. Only switch when CARD_PROVIDER=rain so a
+  // leftover RAIN_API_KEY in Production does not take the sandbox offline.
+  if (readEnv('CARD_PROVIDER').toLowerCase() === 'rain') {
     return createRainProvider()
   }
   return createSandboxProvider()

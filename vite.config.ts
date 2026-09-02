@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
     'SEP24_CLIENT_SIGNING_SECRET',
     'CARD_TREASURY_SECRET_KEY',
     'CARD_DAILY_LIMIT_USD',
+    'CARD_PROVIDER',
     'RAIN_API_KEY',
     'RAIN_API_BASE_URL',
     'NEXT_PUBLIC_STELLAR_NETWORK',

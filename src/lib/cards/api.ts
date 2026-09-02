@@ -24,28 +24,30 @@ export async function fetchCard(id: string): Promise<PublicCard> {
 export async function fetchSecureDetails(
   id: string,
 ): Promise<SecureCardDetails> {
-  return request<SecureCardDetails>(
-    `/api/cards/${encodeURIComponent(id)}/secure-details`,
-  )
+  const params = new URLSearchParams({ cardId: id })
+  return request<SecureCardDetails>(`/api/cards/secure-details?${params}`)
 }
 
 export async function freezeCard(id: string): Promise<PublicCard> {
-  return request<PublicCard>(`/api/cards/${encodeURIComponent(id)}/freeze`, {
+  return request<PublicCard>('/api/cards/freeze', {
     method: 'POST',
+    body: JSON.stringify({ cardId: id }),
   })
 }
 
 export async function unfreezeCard(id: string): Promise<PublicCard> {
-  return request<PublicCard>(`/api/cards/${encodeURIComponent(id)}/unfreeze`, {
+  return request<PublicCard>('/api/cards/unfreeze', {
     method: 'POST',
+    body: JSON.stringify({ cardId: id }),
   })
 }
 
 export async function fetchCardTransactions(
   id: string,
 ): Promise<CardAuthorization[]> {
+  const params = new URLSearchParams({ cardId: id })
   const body = await request<{ transactions?: CardAuthorization[] }>(
-    `/api/cards/${encodeURIComponent(id)}/transactions`,
+    `/api/cards/transactions?${params}`,
   )
   return body.transactions ?? []
 }

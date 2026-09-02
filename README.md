@@ -95,7 +95,9 @@ The **Add** button runs SEP-10 (server-side signing) and SEP-24 interactive depo
 
 PAN / CVV stay encrypted on the server. The browser only receives them from `GET /api/cards/[id]/secure-details` after **Ver detalles**. Secret keys never go to the client.
 
-Optional env: `CARD_TREASURY_SECRET_KEY` (otherwise the server creates a Friendbot treasury), `CARD_DAILY_LIMIT_USD`, and later `RAIN_API_KEY` + `RAIN_API_BASE_URL`.
+The same `/api/cards/:action` function runs in `npm run dev`, `npm run preview`, Vercel Preview, and Production (one dynamic function, like SEP-24, to stay under the Hobby limit). Nested paths such as `/api/cards/:id/freeze` still work locally; the UI uses single-segment routes (`/api/cards/freeze?` / body `cardId`) so Vercel can resolve them.
+
+Optional env: `CARD_TREASURY_SECRET_KEY` (otherwise the server creates a Friendbot treasury), `CARD_DAILY_LIMIT_USD`. Leave `CARD_PROVIDER` unset (sandbox). Set `CARD_PROVIDER=rain` only when the production adapter is wired.
 
 ## Map
 
