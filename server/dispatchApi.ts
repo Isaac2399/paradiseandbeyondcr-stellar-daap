@@ -12,6 +12,7 @@ import {
   listPublicPlaces,
   type UserRole,
 } from './auth.js'
+import { getAdminOverview, requireSuperAdmin } from './superAdmin.js'
 import {
   handleSep24Deposit,
   handleSep24Info,
@@ -81,6 +82,12 @@ async function route(input: {
       reward: String(input.body.reward ?? ''),
     })
     return { status: 200, body: result }
+  }
+
+  if (method === 'GET' && path === '/api/admin/overview') {
+    const session = await userFromCookieHeader(input.cookie)
+    await requireSuperAdmin(session)
+    return { status: 200, body: await getAdminOverview() }
   }
 
   if (method === 'POST' && path === '/api/auth/register') {

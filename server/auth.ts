@@ -11,9 +11,36 @@ import { AuthError } from './errors.js'
 import { ensureLoyaltyTrustline, provisionStellarAccount } from './provisionAccount.js'
 import { loadStore, saveStore } from './userStore.js'
 
+export const DEFAULT_SUPER_ADMIN_PUBLIC_KEY =
+  'GC5IQE74UCRCKXJII3G3AYNJHB75JGVD2TQKMDNNR2QZVLKEDVU5E4NJ'
+
+export function superAdminPublicKey(): string {
+  const fromEnv = (process.env.SUPER_ADMIN_PUBLIC_KEY ?? '').trim()
+  return fromEnv || DEFAULT_SUPER_ADMIN_PUBLIC_KEY
+}
+
+export function isSuperAdminRecord(user: {
+  email: string
+  publicKey: string
+  role: UserRole
+}): boolean {
+  if (user.role === 'admin') {
+    return true
+  }
+  if (user.publicKey === superAdminPublicKey()) {
+    return true
+  }
+  const email = superAdminEmail()
+  return Boolean(email && user.email === email)
+}
+
+function superAdminEmail(): string {
+  return normalizeEmail(process.env.SUPER_ADMIN_EMAIL ?? '')
+}
+
 export { AuthError } from './errors.js'
 
-export type UserRole = 'customer' | 'merchant'
+export type UserRole = 'customer' | 'merchant' | 'admin'
 
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
 const COOKIE_NAME = 'stellar_session'
@@ -61,12 +88,13 @@ function cookieAttrs(): string {
 }
 
 export function toPublicUser(user: StoredUser): PublicUser {
+  const admin = isSuperAdminRecord(user)
   return {
     id: user.id,
     email: user.email,
-    role: user.role,
-    publicKey: user.publicKey,
-    place: user.place,
+    role: admin ? 'admin' : user.role,
+    publicKey: admin ? superAdminPublicKey() : user.publicKey,
+    place: admin ? undefined : user.place,
   }
 }
 
@@ -109,24 +137,39 @@ export async function createUser(input: {
     throw new AuthError('Ya existe una cuenta con ese email', 409)
   }
 
-  let keys: { publicKey: string; secretKey: string }
-  try {
-    keys = await provisionStellarAccount()
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'No se pudo crear la cuenta Stellar'
-    throw new AuthError(message, 502)
-  }
-
   const salt = randomBytes(16).toString('hex')
-  const user: StoredUser = {
-    id: randomBytes(12).toString('hex'),
-    email,
-    salt,
-    passwordHash: hashPassword(input.password, salt),
-    role: input.role,
-    publicKey: keys.publicKey,
-    secretKeyEnc: encryptSecret(keys.secretKey),
-    createdAt: new Date().toISOString(),
+  const adminSignup = Boolean(superAdminEmail() && email === superAdminEmail())
+
+  let user: StoredUser
+  if (adminSignup) {
+    user = {
+      id: randomBytes(12).toString('hex'),
+      email,
+      salt,
+      passwordHash: hashPassword(input.password, salt),
+      role: 'admin',
+      publicKey: superAdminPublicKey(),
+      createdAt: new Date().toISOString(),
+    }
+  } else {
+    let keys: { publicKey: string; secretKey: string }
+    try {
+      keys = await provisionStellarAccount()
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'No se pudo crear la cuenta Stellar'
+      throw new AuthError(message, 502)
+    }
+    user = {
+      id: randomBytes(12).toString('hex'),
+      email,
+      salt,
+      passwordHash: hashPassword(input.password, salt),
+      role: input.role,
+      publicKey: keys.publicKey,
+      secretKeyEnc: encryptSecret(keys.secretKey),
+      createdAt: new Date().toISOString(),
+    }
   }
 
   const store = await loadStore()
@@ -146,8 +189,11 @@ export async function authenticate(
       401,
     )
   }
-  await ensureUserLoyaltyTrustline(user.id)
-  return toPublicUser(user)
+  const promoted = await promoteSuperAdminIfNeeded(user)
+  if (!isSuperAdminRecord(promoted)) {
+    await ensureUserLoyaltyTrustline(promoted.id)
+  }
+  return toPublicUser(promoted)
 }
 
 export async function ensureUserLoyaltyTrustline(userId: string): Promise<void> {
@@ -176,7 +222,16 @@ export async function updateUserPublicKey(
   if (!user) {
     throw new AuthError('No hay sesión', 401)
   }
+  const duplicate = store.users.find(
+    (entry) => entry.publicKey === publicKey && entry.id !== userId,
+  )
+  if (duplicate) {
+    throw new AuthError('Esa public key ya está vinculada a otra cuenta', 409)
+  }
   user.publicKey = publicKey
+  if (publicKey === superAdminPublicKey()) {
+    user.role = 'admin'
+  }
   await saveStore(store)
   return toPublicUser(user)
 }
@@ -207,7 +262,7 @@ export async function listPublicPlaces(): Promise<
 > {
   const store = await loadStore()
   return store.users.flatMap((user) => {
-    if (user.role !== 'merchant' || !user.place) {
+    if (user.role !== 'merchant' || !user.place || isSuperAdminRecord(user)) {
       return []
     }
     return [
@@ -262,6 +317,25 @@ export async function secretKeyForUser(userId: string): Promise<string> {
     )
   }
   return decryptSecret(user.secretKeyEnc)
+}
+
+async function promoteSuperAdminIfNeeded(user: StoredUser): Promise<StoredUser> {
+  if (!isSuperAdminRecord(user)) {
+    return user
+  }
+  const adminKey = superAdminPublicKey()
+  if (user.role === 'admin' && user.publicKey === adminKey) {
+    return user
+  }
+  const store = await loadStore()
+  const entry = store.users.find((item) => item.id === user.id)
+  if (!entry) {
+    return user
+  }
+  entry.role = 'admin'
+  entry.publicKey = adminKey
+  await saveStore(store)
+  return entry
 }
 
 function encryptSecret(secret: string): string {

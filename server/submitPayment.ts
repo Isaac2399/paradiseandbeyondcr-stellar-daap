@@ -7,7 +7,7 @@ import {
   StrKey,
   TransactionBuilder,
 } from '@stellar/stellar-sdk'
-import { secretKeyForUser, findUserByPublicKey } from './auth.js'
+import { secretKeyForUser, findUserByPublicKey, findUserById, isSuperAdminRecord } from './auth.js'
 import { AuthError } from './errors.js'
 import {
   horizonUrl,
@@ -25,6 +25,10 @@ export async function submitCustodialPayment(input: {
 }): Promise<{ hash: string; status: string; rewardHash?: string }> {
   if (!StrKey.isValidEd25519PublicKey(input.destination)) {
     throw new AuthError('La cuenta destino no es válida', 400)
+  }
+  const payer = await findUserById(input.userId)
+  if (payer && isSuperAdminRecord(payer)) {
+    throw new AuthError('El super admin no envía pagos desde este panel', 403)
   }
   if (!/^\d+(\.\d{1,7})?$/.test(input.amount) || Number(input.amount) <= 0) {
     throw new AuthError('El monto no es válido', 400)

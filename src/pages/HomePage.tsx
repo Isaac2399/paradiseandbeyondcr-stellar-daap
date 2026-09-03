@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { AdminDashboard } from '@/components/admin/AdminDashboard'
 import { AccountStrip } from '@/components/dashboard/AccountStrip'
 import { ActivityList } from '@/components/dashboard/ActivityList'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
@@ -27,6 +28,10 @@ export default function HomePage() {
 
   if (!user) {
     return null
+  }
+
+  if (user.role === 'admin') {
+    return <AdminDashboard />
   }
 
   const isCustomer = user.role === 'customer'

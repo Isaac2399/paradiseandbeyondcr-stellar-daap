@@ -1,4 +1,4 @@
-export type UserRole = 'customer' | 'merchant'
+export type UserRole = 'customer' | 'merchant' | 'admin'
 
 export type PlacePromoKind = 'story' | 'purchase' | 'usdc'
 
