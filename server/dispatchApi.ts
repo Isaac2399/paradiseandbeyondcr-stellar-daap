@@ -11,6 +11,7 @@ import {
   userFromCookieHeader,
   listPublicPlaces,
   type UserRole,
+  ensureDevSuperAdmin,
 } from './auth.js'
 import { getAdminOverview, requireSuperAdmin } from './superAdmin.js'
 import {
@@ -65,6 +66,7 @@ async function route(input: {
   cookie?: string
   body: Record<string, unknown>
 }): Promise<{ status: number; body: unknown; setCookie?: string }> {
+  await ensureDevSuperAdmin()
   const path = (input.path.split('?')[0] ?? input.path).replace(/\/$/, '') || '/'
   const method = input.method.toUpperCase()
 
@@ -84,7 +86,10 @@ async function route(input: {
     return { status: 200, body: result }
   }
 
-  if (method === 'GET' && path === '/api/admin/overview') {
+  if (
+    method === 'GET' &&
+    (path === '/api/admin/overview' || path === '/api/admin')
+  ) {
     const session = await userFromCookieHeader(input.cookie)
     await requireSuperAdmin(session)
     return { status: 200, body: await getAdminOverview() }

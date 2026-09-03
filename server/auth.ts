@@ -13,6 +13,8 @@ import { loadStore, saveStore } from './userStore.js'
 
 export const DEFAULT_SUPER_ADMIN_PUBLIC_KEY =
   'GC5IQE74UCRCKXJII3G3AYNJHB75JGVD2TQKMDNNR2QZVLKEDVU5E4NJ'
+export const DEFAULT_SUPER_ADMIN_EMAIL = 'admin@stellarpay.local'
+export const DEV_SUPER_ADMIN_PASSWORD = 'Admin1234!'
 
 export function superAdminPublicKey(): string {
   const fromEnv = (process.env.SUPER_ADMIN_PUBLIC_KEY ?? '').trim()
@@ -34,8 +36,64 @@ export function isSuperAdminRecord(user: {
   return Boolean(email && user.email === email)
 }
 
-function superAdminEmail(): string {
-  return normalizeEmail(process.env.SUPER_ADMIN_EMAIL ?? '')
+export function superAdminEmail(): string {
+  const fromEnv = normalizeEmail(process.env.SUPER_ADMIN_EMAIL ?? '')
+  return fromEnv || DEFAULT_SUPER_ADMIN_EMAIL
+}
+
+function seedSuperAdminDisabled(): boolean {
+  const flag = (process.env.SUPER_ADMIN_SEED ?? '').trim().toLowerCase()
+  return flag === '0' || flag === 'false' || flag === 'off'
+}
+
+let seedSuperAdminPromise: Promise<void> | null = null
+
+export async function ensureDevSuperAdmin(): Promise<void> {
+  if (seedSuperAdminDisabled()) {
+    return
+  }
+  if (!seedSuperAdminPromise) {
+    seedSuperAdminPromise = upsertDevSuperAdmin().catch((error) => {
+      seedSuperAdminPromise = null
+      throw error
+    })
+  }
+  await seedSuperAdminPromise
+}
+
+async function upsertDevSuperAdmin(): Promise<void> {
+  const email = DEFAULT_SUPER_ADMIN_EMAIL
+  const store = await loadStore()
+  const existing = store.users.find((user) => user.email === email)
+  const adminKey = superAdminPublicKey()
+  if (
+    existing &&
+    existing.role === 'admin' &&
+    existing.publicKey === adminKey &&
+    verifyPassword(DEV_SUPER_ADMIN_PASSWORD, existing.salt, existing.passwordHash)
+  ) {
+    return
+  }
+  const salt = randomBytes(16).toString('hex')
+  const passwordHash = hashPassword(DEV_SUPER_ADMIN_PASSWORD, salt)
+  if (existing) {
+    existing.role = 'admin'
+    existing.publicKey = adminKey
+    existing.salt = salt
+    existing.passwordHash = passwordHash
+    delete existing.secretKeyEnc
+  } else {
+    store.users.push({
+      id: randomBytes(12).toString('hex'),
+      email,
+      salt,
+      passwordHash,
+      role: 'admin',
+      publicKey: adminKey,
+      createdAt: new Date().toISOString(),
+    })
+  }
+  await saveStore(store)
 }
 
 export { AuthError } from './errors.js'

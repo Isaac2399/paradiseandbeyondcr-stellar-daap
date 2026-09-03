@@ -1,14 +1,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
+import { ensureDevSuperAdmin } from './auth.js'
 import { dispatchApi } from './dispatchApi.js'
 
 export function authApiPlugin(): Plugin {
   return {
     name: 'stellar-auth-api',
     configureServer(server) {
+      void ensureDevSuperAdmin()
       server.middlewares.use(handleApi)
     },
     configurePreviewServer(server) {
+      void ensureDevSuperAdmin()
       server.middlewares.use(handleApi)
     },
   }
