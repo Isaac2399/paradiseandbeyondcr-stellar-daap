@@ -6,6 +6,7 @@ import { dispatchApi } from './dispatchApi.js'
 export function authApiPlugin(): Plugin {
   return {
     name: 'stellar-auth-api',
+    enforce: 'pre',
     configureServer(server) {
       void ensureDevSuperAdmin()
       server.middlewares.use(handleApi)
@@ -28,7 +29,8 @@ async function handleApi(
     !url.startsWith('/api/payments') &&
     !url.startsWith('/api/sep24') &&
     !url.startsWith('/api/places') &&
-    !url.startsWith('/api/admin')
+    !url.startsWith('/api/admin') &&
+    !url.startsWith('/api/cards')
   ) {
     next()
     return

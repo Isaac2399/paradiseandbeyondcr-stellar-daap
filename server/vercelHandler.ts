@@ -6,6 +6,9 @@ type VercelRequest = IncomingMessage & {
   body?: unknown
 }
 
+const DYNAMIC_SEGMENT = /\/\[(?:\.\.\.)?[^\]]+\]/g
+const API_PREFIX = /^\/(auth|payments|sep24|places|cards|admin)(\/|$)/
+
 export const config = {
   maxDuration: 30,
 }
@@ -44,22 +47,85 @@ function headerPath(req: IncomingMessage): string {
   return value ?? ''
 }
 
-function requestPath(req: VercelRequest): string {
-  const raw = ((req.url ?? headerPath(req)).split('?')[0] ?? '').trim()
-  if (raw.startsWith('/api/')) {
-    return raw
+/**
+ * Vercel may pass the full `/api/cards/issue`, only `/cards/issue`,
+ * only the dynamic segment (`/issue`), or the matcher `/api/cards/[action]`.
+ * Rebuild a concrete `/api/...` path so local Vite, Preview, and Production
+ * all hit the same dispatch routes.
+ */
+export function requestPath(req: VercelRequest): string {
+  const url = req.url ?? ''
+  const [urlPath, search = ''] = url.split('?')
+  const query = new URLSearchParams(search)
+  const fromUrl = normalizePath(urlPath ?? '')
+  const fromHeader = normalizePath(headerPath(req))
+
+  const concrete = firstConcreteApiPath([fromUrl, fromHeader])
+  if (concrete) {
+    return concrete
   }
-  if (
-    raw.startsWith('/auth/') ||
-    raw === '/payments' ||
-    raw.startsWith('/payments') ||
-    raw.startsWith('/sep24') ||
-    raw.startsWith('/places') ||
-    raw.startsWith('/admin')
-  ) {
-    return `/api${raw}`
+
+  const matcher = fromHeader.includes('[')
+    ? fromHeader
+    : fromUrl.includes('[')
+      ? fromUrl
+      : ''
+  const base = normalizePath(matcher.replace(DYNAMIC_SEGMENT, ''))
+  const leftover = firstConcretePath([
+    fromUrl.includes('[') ? '' : fromUrl,
+    query.get('action'),
+    query.get('path'),
+  ])
+
+  if (base.startsWith('/api') && leftover) {
+    if (leftover.startsWith('/api/')) {
+      return leftover
+    }
+    const suffix = leftover.startsWith('/') ? leftover : `/${leftover}`
+    if (base.endsWith(suffix)) {
+      return base
+    }
+    return normalizePath(`${base}${suffix}`)
   }
-  return raw || '/api'
+
+  if (base.startsWith('/api')) {
+    return base
+  }
+  return fromUrl || '/api'
+}
+
+function firstConcreteApiPath(paths: string[]): string | null {
+  for (const raw of paths) {
+    if (!raw || raw.includes('[')) {
+      continue
+    }
+    if (raw.startsWith('/api/')) {
+      return normalizePath(raw)
+    }
+    if (API_PREFIX.test(raw)) {
+      return normalizePath(`/api${raw}`)
+    }
+  }
+  return null
+}
+
+function firstConcretePath(values: Array<string | null>): string {
+  for (const value of values) {
+    const raw = normalizePath(value ?? '')
+    if (raw && raw !== '/' && !raw.includes('[')) {
+      return raw
+    }
+  }
+  return ''
+}
+
+function normalizePath(path: string): string {
+  const trimmed = path.trim()
+  if (!trimmed) {
+    return ''
+  }
+  const withSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+  return withSlash.replace(/\/$/, '') || '/'
 }
 
 function parseBody(body: unknown): Record<string, unknown> {

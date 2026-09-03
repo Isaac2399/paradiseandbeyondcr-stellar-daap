@@ -6,6 +6,7 @@ import LoginPage from '@/pages/LoginPage'
 import MapPage from '@/pages/MapPage'
 import ProfilePage from '@/pages/ProfilePage'
 import RegisterPage from '@/pages/RegisterPage'
+import CardPage from '@/pages/CardPage'
 import { useAuth } from '@/lib/auth/AuthContext'
 
 export function AppRoutes() {
@@ -21,6 +22,7 @@ export function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/card" element={<CardPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
