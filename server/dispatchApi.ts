@@ -19,6 +19,7 @@ import {
   handleSep24Trustline,
 } from './sep24Api.js'
 import { parsePlaceBody, reverseNominatim, searchNominatim } from './places.js'
+import { handleCardRoutes } from './cardApi.js'
 
 function isAuthError(error: unknown): error is AuthError {
   if (error instanceof AuthError) {
@@ -66,6 +67,11 @@ async function route(input: {
 }): Promise<{ status: number; body: unknown; setCookie?: string }> {
   const path = (input.path.split('?')[0] ?? input.path).replace(/\/$/, '') || '/'
   const method = input.method.toUpperCase()
+
+  const cardResult = await handleCardRoutes({ ...input, path, method })
+  if (cardResult) {
+    return cardResult
+  }
 
   if (method === 'POST' && path === '/api/payments') {
     const session = await userFromCookieHeader(input.cookie)

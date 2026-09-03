@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { CardTeaser } from '@/components/card/CardTeaser'
 import { AccountStrip } from '@/components/dashboard/AccountStrip'
 import { ActivityList } from '@/components/dashboard/ActivityList'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
@@ -43,6 +44,8 @@ export default function HomePage() {
         onSend={() => setSendOpen(true)}
         onDepositCompleted={() => void reload()}
       />
+
+      <CardTeaser />
 
       <AccountStrip balances={balances} />
 
