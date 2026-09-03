@@ -185,7 +185,7 @@ export function ScanAndPay() {
           </p>
           <button
             type="button"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-app-accent py-2.5 text-sm font-medium text-black"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-app-accent py-2.5 text-sm font-medium text-white"
             onClick={enableCamera}
           >
             <Camera className="h-4 w-4" />
@@ -273,7 +273,7 @@ export function ScanAndPay() {
             </button>
             <button
               type="button"
-              className="flex-1 rounded-xl bg-app-accent py-2.5 text-sm font-medium text-black disabled:opacity-60"
+              className="flex-1 rounded-xl bg-app-accent py-2.5 text-sm font-medium text-white disabled:opacity-60"
               onClick={() => void onConfirm()}
               disabled={submitting}
             >

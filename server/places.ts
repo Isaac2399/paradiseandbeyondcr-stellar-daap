@@ -21,6 +21,11 @@ const PLACE_CATEGORIES = new Set([
   'other',
 ])
 
+export type PlacePromo =
+  | { kind: 'story'; rojos: string }
+  | { kind: 'purchase'; spend: string; rojos: string }
+  | { kind: 'usdc'; rojos: string }
+
 export type PlaceInput = {
   name: string
   address: string
@@ -28,6 +33,8 @@ export type PlaceInput = {
   lng: number
   category: string
   note?: string
+  acceptsRojos?: boolean
+  promos?: PlacePromo[]
 }
 
 export type GeocodeHit = {
@@ -63,6 +70,9 @@ export function parsePlaceBody(body: Record<string, unknown>): PlaceInput {
     throw new AuthError('Elige un tipo de negocio válido', 400)
   }
 
+  const acceptsRojos = Boolean(body.acceptsRojos)
+  const promos = parsePromos(body.promos)
+
   return {
     name,
     address,
@@ -70,7 +80,67 @@ export function parsePlaceBody(body: Record<string, unknown>): PlaceInput {
     lng,
     category,
     note: note || undefined,
+    acceptsRojos: acceptsRojos || undefined,
+    promos,
   }
+}
+
+function parsePromos(raw: unknown): PlacePromo[] | undefined {
+  if (raw == null || raw === '') {
+    return undefined
+  }
+  if (!Array.isArray(raw)) {
+    throw new AuthError('Las promos no son válidas', 400)
+  }
+  if (raw.length > 3) {
+    throw new AuthError('Puedes publicar como máximo 3 promos de ROJOS', 400)
+  }
+
+  const seen = new Set<string>()
+  const promos: PlacePromo[] = []
+
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') {
+      throw new AuthError('Hay una promo inválida', 400)
+    }
+    const item = entry as Record<string, unknown>
+    const kind = String(item.kind ?? '').trim()
+
+    if (kind !== 'story' && kind !== 'purchase' && kind !== 'usdc') {
+      throw new AuthError('El tipo de promo no es válido', 400)
+    }
+    if (seen.has(kind)) {
+      throw new AuthError('No puedes repetir el mismo tipo de promo', 400)
+    }
+    seen.add(kind)
+
+    const rojos = parsePromoAmount(item.rojos, 'La cantidad de ROJOS')
+    if (kind === 'purchase') {
+      promos.push({
+        kind,
+        spend: parsePromoAmount(item.spend, 'El monto de compra'),
+        rojos,
+      })
+    } else {
+      promos.push({ kind, rojos })
+    }
+  }
+
+  return promos.length ? promos : undefined
+}
+
+function parsePromoAmount(value: unknown, label: string): string {
+  const raw = String(value ?? '')
+    .trim()
+    .replace(',', '.')
+  if (!/^\d+(\.\d{1,7})?$/.test(raw) || Number(raw) <= 0 || Number(raw) > 1_000_000) {
+    throw new AuthError(`${label} no es válida`, 400)
+  }
+  const [whole, fraction = ''] = raw.split('.')
+  if (!fraction) {
+    return whole
+  }
+  return `${whole}.${fraction.replace(/0+$/, '')}`.replace(/\.$/, '')
 }
 
 export async function searchNominatim(query: string): Promise<GeocodeHit[]> {

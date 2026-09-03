@@ -13,11 +13,13 @@ import {
   type GeocodeHit,
 } from '@/lib/places/api'
 import { readableError } from '@/lib/auth/readableError'
-import type { AppUser, BusinessPlace } from '@/types/user'
+import type { AppUser, BusinessPlace, PlacePromo } from '@/types/user'
 import {
   BUSINESS_CATEGORIES,
   isBusinessCategory,
 } from '@/lib/places/categories'
+import { promoByKind } from '@/lib/places/promos'
+import { stellarConfig } from '@/lib/stellar/config'
 
 export function MerchantPlaceEditor({
   user,
@@ -27,10 +29,24 @@ export function MerchantPlaceEditor({
   onSaved: (next: AppUser) => void
 }) {
   const saved = user.place
+  const savedStory = promoByKind(saved?.promos, 'story')
+  const savedPurchase = promoByKind(saved?.promos, 'purchase')
+  const savedUsdc = promoByKind(saved?.promos, 'usdc')
+  const loyaltyCode = stellarConfig.loyalty.code
   const [name, setName] = useState(saved?.name ?? '')
   const [address, setAddress] = useState(saved?.address ?? '')
   const [note, setNote] = useState(saved?.note ?? '')
   const [category, setCategory] = useState(saved?.category ?? 'restaurant')
+  const [acceptsRojos, setAcceptsRojos] = useState(Boolean(saved?.acceptsRojos))
+  const [storyOn, setStoryOn] = useState(Boolean(savedStory))
+  const [storyRojos, setStoryRojos] = useState(savedStory?.rojos ?? '')
+  const [purchaseOn, setPurchaseOn] = useState(Boolean(savedPurchase))
+  const [purchaseSpend, setPurchaseSpend] = useState(
+    savedPurchase?.kind === 'purchase' ? savedPurchase.spend : '',
+  )
+  const [purchaseRojos, setPurchaseRojos] = useState(savedPurchase?.rojos ?? '')
+  const [usdcOn, setUsdcOn] = useState(Boolean(savedUsdc))
+  const [usdcRojos, setUsdcRojos] = useState(savedUsdc?.rojos ?? '')
   const [lat, setLat] = useState(saved?.lat ?? DEFAULT_MAP_CENTER[0])
   const [lng, setLng] = useState(saved?.lng ?? DEFAULT_MAP_CENTER[1])
   const [pinned, setPinned] = useState(Boolean(saved))
@@ -79,6 +95,15 @@ export function MerchantPlaceEditor({
     setSaving(true)
     setError(null)
     setStatus(null)
+    const promos = collectPromos({
+      storyOn,
+      storyRojos,
+      purchaseOn,
+      purchaseSpend,
+      purchaseRojos,
+      usdcOn,
+      usdcRojos,
+    })
     const place: BusinessPlace = {
       name: name.trim(),
       address: address.trim(),
@@ -86,6 +111,8 @@ export function MerchantPlaceEditor({
       lng,
       category,
       note: note.trim() || undefined,
+      acceptsRojos: acceptsRojos || undefined,
+      promos: promos.length ? promos : undefined,
     }
     try {
       onSaved(await saveBusinessPlace(place))
@@ -209,6 +236,93 @@ export function MerchantPlaceEditor({
           />
         </label>
 
+        <div className="space-y-3 rounded-2xl bg-app-chip p-3">
+          <p className="text-sm font-medium text-white/80">Promos con {loyaltyCode}</p>
+          <p className="text-xs font-normal text-app-muted">
+            Los clientes ven esto en la ficha del mapa. Activa solo lo que
+            ofrezcas.
+          </p>
+
+          <label className="flex items-start gap-3 text-sm text-white/85">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 accent-app-accent"
+              checked={acceptsRojos}
+              onChange={(event) => setAcceptsRojos(event.target.checked)}
+            />
+            <span>Aceptamos {loyaltyCode} como descuento</span>
+          </label>
+
+          <div className="flex items-start gap-3 text-sm text-white/85">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 accent-app-accent"
+              checked={storyOn}
+              onChange={(event) => setStoryOn(event.target.checked)}
+            />
+            <div className="grid min-w-0 flex-1 gap-1.5">
+              <span>Por subir historia te regalamos</span>
+              <input
+                className={fieldClass}
+                inputMode="decimal"
+                disabled={!storyOn}
+                value={storyRojos}
+                onChange={(event) => setStoryRojos(event.target.value)}
+                placeholder={`Cantidad de ${loyaltyCode}`}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 text-sm text-white/85">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 accent-app-accent"
+              checked={purchaseOn}
+              onChange={(event) => setPurchaseOn(event.target.checked)}
+            />
+            <div className="grid min-w-0 flex-1 gap-1.5">
+              <span>Por compra de</span>
+              <input
+                className={fieldClass}
+                inputMode="decimal"
+                disabled={!purchaseOn}
+                value={purchaseSpend}
+                onChange={(event) => setPurchaseSpend(event.target.value)}
+                placeholder="Monto en USDC"
+              />
+              <span>te regalamos</span>
+              <input
+                className={fieldClass}
+                inputMode="decimal"
+                disabled={!purchaseOn}
+                value={purchaseRojos}
+                onChange={(event) => setPurchaseRojos(event.target.value)}
+                placeholder={`Cantidad de ${loyaltyCode}`}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 text-sm text-white/85">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 shrink-0 accent-app-accent"
+              checked={usdcOn}
+              onChange={(event) => setUsdcOn(event.target.checked)}
+            />
+            <div className="grid min-w-0 flex-1 gap-1.5">
+              <span>Si pagas con USDC te damos</span>
+              <input
+                className={fieldClass}
+                inputMode="decimal"
+                disabled={!usdcOn}
+                value={usdcRojos}
+                onChange={(event) => setUsdcRojos(event.target.value)}
+                placeholder={`Cantidad de ${loyaltyCode}`}
+              />
+            </div>
+          </div>
+        </div>
+
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
         {status ? <p className="text-sm text-green-400">{status}</p> : null}
 
@@ -216,7 +330,7 @@ export function MerchantPlaceEditor({
           type="button"
           onClick={() => void onSave()}
           disabled={saving}
-          className="w-full rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
+          className="w-full rounded-2xl bg-app-accent py-3 text-sm font-medium text-white disabled:opacity-60"
         >
           {saving ? 'Guardando…' : 'Publicar en el mapa'}
         </button>
@@ -233,4 +347,30 @@ export function MerchantPlaceEditor({
       </div>
     </div>
   )
+}
+
+function collectPromos(input: {
+  storyOn: boolean
+  storyRojos: string
+  purchaseOn: boolean
+  purchaseSpend: string
+  purchaseRojos: string
+  usdcOn: boolean
+  usdcRojos: string
+}): PlacePromo[] {
+  const promos: PlacePromo[] = []
+  if (input.storyOn) {
+    promos.push({ kind: 'story', rojos: input.storyRojos.trim() })
+  }
+  if (input.purchaseOn) {
+    promos.push({
+      kind: 'purchase',
+      spend: input.purchaseSpend.trim(),
+      rojos: input.purchaseRojos.trim(),
+    })
+  }
+  if (input.usdcOn) {
+    promos.push({ kind: 'usdc', rojos: input.usdcRojos.trim() })
+  }
+  return promos
 }

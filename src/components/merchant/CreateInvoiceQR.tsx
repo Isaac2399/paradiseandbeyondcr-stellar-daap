@@ -121,7 +121,7 @@ export function CreateInvoiceQR({
 
         <button
           type="submit"
-          className="rounded-2xl bg-app-accent py-3 text-sm font-medium text-black"
+          className="rounded-2xl bg-app-accent py-3 text-sm font-medium text-white"
         >
           Generar QR
         </button>

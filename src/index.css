@@ -7,7 +7,7 @@
   --color-app-chip: #2c2c2e;
   --color-app-line: #2a2a2c;
   --color-app-muted: #8e8e93;
-  --color-app-accent: #f5c400;
+  --color-app-accent: #1c8c62;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
@@ -93,7 +93,7 @@ body::before {
 }
 
 .places-map .leaflet-control-attribution a {
-  color: #f5c400;
+  color: #1c8c62;
 }
 
 .place-pin {
@@ -107,12 +107,12 @@ body::before {
   height: 16px;
   margin: 8px auto 0;
   border-radius: 999px;
-  background: #f5c400;
-  box-shadow: 0 0 0 6px rgba(245, 196, 0, 0.22);
+  background: #1c8c62;
+  box-shadow: 0 0 0 6px rgba(28, 140, 98, 0.28);
 }
 
 .place-pin.is-selected .place-pin-mark {
   width: 18px;
   height: 18px;
-  box-shadow: 0 0 0 8px rgba(245, 196, 0, 0.32);
+  box-shadow: 0 0 0 8px rgba(28, 140, 98, 0.4);
 }

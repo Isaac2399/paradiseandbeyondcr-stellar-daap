@@ -1,5 +1,12 @@
 export type UserRole = 'customer' | 'merchant'
 
+export type PlacePromoKind = 'story' | 'purchase' | 'usdc'
+
+export type PlacePromo =
+  | { kind: 'story'; rojos: string }
+  | { kind: 'purchase'; spend: string; rojos: string }
+  | { kind: 'usdc'; rojos: string }
+
 export type BusinessPlace = {
   name: string
   address: string
@@ -7,6 +14,9 @@ export type BusinessPlace = {
   lng: number
   category: string
   note?: string
+  /** Merchant accepts ROJOS as payment / discount. */
+  acceptsRojos?: boolean
+  promos?: PlacePromo[]
 }
 
 export type AppUser = {

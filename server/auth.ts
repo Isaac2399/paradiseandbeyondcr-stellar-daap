@@ -34,6 +34,12 @@ export type StoredUser = {
     lng: number
     category?: string
     note?: string
+    acceptsRojos?: boolean
+    promos?: Array<
+      | { kind: 'story'; rojos: string }
+      | { kind: 'purchase'; spend: string; rojos: string }
+      | { kind: 'usdc'; rojos: string }
+    >
   }
 }
 

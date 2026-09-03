@@ -114,7 +114,7 @@ export function SendByPublicKey({
       <button
         type="submit"
         disabled={submitting}
-        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
+        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-white disabled:opacity-60"
       >
         <Send className="w-4 h-4" />
         {submitting ? 'Enviando…' : 'Enviar'}

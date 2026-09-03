@@ -86,7 +86,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={`rounded-2xl px-3 py-2 text-sm font-medium ${
-        active ? 'bg-app-accent text-black' : 'bg-app-chip text-white/80'
+        active ? 'bg-app-accent text-white' : 'bg-app-chip text-white/80'
       }`}
     >
       {label}
@@ -191,7 +191,7 @@ function CashDepositPanel({
               })
             }}
             disabled={deposit.phase === 'trustline'}
-            className="w-full rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
+            className="w-full rounded-2xl bg-app-accent py-3 text-sm font-medium text-white disabled:opacity-60"
           >
             {deposit.phase === 'trustline' ? 'Abriendo trustline…' : 'Abrir trustline USDC'}
           </button>
@@ -219,7 +219,7 @@ function CashDepositPanel({
           <button
             type="submit"
             disabled={deposit.phase === 'starting' || amountOutOfRange}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black disabled:opacity-60"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-white disabled:opacity-60"
           >
             <Banknote className="h-4 w-4" />
             Continuar con el ancla
@@ -349,7 +349,7 @@ function ReceiveOnchain({
       <button
         type="button"
         onClick={onCopy}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-white"
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied ? 'Public key copiada' : 'Copiar public key'}
