@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Copy, LogOut, Store, User } from 'lucide-react'
+import { Check, Copy, LogOut, Shield, Store, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { categoryLabel } from '@/lib/places/categories'
@@ -39,12 +39,18 @@ export default function ProfilePage() {
           <p className="mt-1 text-sm">{account.email}</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          {account.role === 'merchant' ? (
+          {account.role === 'admin' ? (
+            <Shield className="h-4 w-4 text-app-accent" />
+          ) : account.role === 'merchant' ? (
             <Store className="h-4 w-4 text-app-accent" />
           ) : (
             <User className="h-4 w-4 text-app-accent" />
           )}
-          {account.role === 'merchant' ? 'Empresa' : 'Cliente'}
+          {account.role === 'admin'
+            ? 'Super admin / Distribuidor'
+            : account.role === 'merchant'
+              ? 'Empresa'
+              : 'Cliente'}
         </div>
         {account.role === 'merchant' && account.place ? (
           <div>

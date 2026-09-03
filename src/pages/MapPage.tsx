@@ -18,7 +18,9 @@ export default function MapPage() {
         <p className="mt-1 text-sm text-app-muted">
           {isMerchant
             ? 'Publica tu local y las promos de ROJOS para que los clientes las vean en el mapa.'
-            : 'Locales de empresas en Stellar Pay. Filtra por tipo o por promo y toca un pin para ver detalles.'}
+            : user.role === 'admin'
+              ? 'Vista de todos los locales publicados.'
+              : 'Locales de empresas en Stellar Pay. Filtra por tipo o por promo y toca un pin para ver detalles.'}
         </p>
       </div>
 
