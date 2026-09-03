@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { MapPin, Navigation } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { MapPin, Navigation, Search, SlidersHorizontal } from 'lucide-react'
 import { DarkLeafletMap } from '@/components/map/DarkLeafletMap'
 import { fetchPublicPlaces } from '@/lib/places/api'
 import { readableError } from '@/lib/auth/readableError'
@@ -9,14 +9,28 @@ import {
   placeCategory,
   type BusinessCategory,
 } from '@/lib/places/categories'
+import { PlacePromoDetails } from '@/components/map/PlacePromoDetails'
+import {
+  placeMatchesAnyOffer,
+  placeMatchesOffer,
+  placeOfferFilters,
+  type PlaceOfferFilter,
+} from '@/lib/places/promos'
+import { stellarConfig } from '@/lib/stellar/config'
 import type { PublicPlace } from '@/types/user'
 
 export function CustomerPlacesMap() {
   const [places, setPlaces] = useState<PublicPlace[]>([])
-  const [category, setCategory] = useState<'all' | BusinessCategory>('all')
+  const [query, setQuery] = useState('')
+  const [categories, setCategories] = useState<BusinessCategory[]>([])
+  const [offers, setOffers] = useState<PlaceOfferFilter[]>([])
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const filtersRef = useRef<HTMLDivElement>(null)
+  const loyaltyCode = stellarConfig.loyalty.code
+  const offerFilters = placeOfferFilters(loyaltyCode)
 
   useEffect(() => {
     let cancelled = false
@@ -45,11 +59,43 @@ export function CustomerPlacesMap() {
   }, [])
 
   const filtered = useMemo(() => {
-    if (category === 'all') {
-      return places
+    const needle = query.trim().toLowerCase()
+    return places.filter((place) => {
+      const matchesName =
+        !needle ||
+        place.name.toLowerCase().includes(needle) ||
+        place.address.toLowerCase().includes(needle)
+      const matchesCategory =
+        categories.length === 0 ||
+        categories.includes(placeCategory(place.category))
+      return (
+        matchesName &&
+        matchesCategory &&
+        placeMatchesAnyOffer(place, offers)
+      )
+    })
+  }, [places, query, categories, offers])
+
+  const visibleOfferFilters = useMemo(
+    () =>
+      offerFilters.filter((item) =>
+        places.some((place) => placeMatchesOffer(place, item.id)),
+      ),
+    [offerFilters, places],
+  )
+
+  useEffect(() => {
+    if (!filtersOpen) {
+      return
     }
-    return places.filter((place) => placeCategory(place.category) === category)
-  }, [places, category])
+    function onPointerDown(event: MouseEvent) {
+      if (!filtersRef.current?.contains(event.target as Node)) {
+        setFiltersOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [filtersOpen])
 
   useEffect(() => {
     if (filtered.some((place) => place.id === selectedId)) {
@@ -60,45 +106,114 @@ export function CustomerPlacesMap() {
 
   const selected = filtered.find((place) => place.id === selectedId) ?? filtered[0]
   const hasAnyPlaces = places.length > 0
+  const activeFilterCount = categories.length + offers.length
+  const visibleCategories = BUSINESS_CATEGORIES.filter((item) =>
+    places.some((place) => placeCategory(place.category) === item.id),
+  )
 
   return (
     <div className="space-y-4">
       {hasAnyPlaces ? (
-        <div className="space-y-2">
-          <label className="grid gap-1.5 text-sm font-medium text-white/80">
-            Filtrar por tipo
-            <select
-              className="w-full rounded-2xl border border-app-line bg-app-chip px-3 py-2.5 text-sm text-white outline-none"
-              value={category}
-              onChange={(event) =>
-                setCategory(event.target.value as 'all' | BusinessCategory)
-              }
-            >
-              <option value="all">Todos los negocios</option>
-              {BUSINESS_CATEGORIES.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            <FilterChip
-              active={category === 'all'}
-              label="Todos"
-              onClick={() => setCategory('all')}
-            />
-            {BUSINESS_CATEGORIES.filter((item) =>
-              places.some((place) => placeCategory(place.category) === item.id),
-            ).map((item) => (
-              <FilterChip
-                key={item.id}
-                active={category === item.id}
-                label={item.label}
-                onClick={() => setCategory(item.id)}
+        <div ref={filtersRef} className="relative space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-app-muted" />
+              <input
+                className="w-full rounded-xl border border-app-line bg-app-chip py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/35"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar por nombre"
+                type="search"
+                autoComplete="off"
               />
-            ))}
+            </label>
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              aria-label="Filtros"
+              onClick={() => setFiltersOpen((open) => !open)}
+              className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+                filtersOpen || activeFilterCount > 0
+                  ? 'bg-app-accent text-white'
+                  : 'bg-app-chip text-white/80'
+              }`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {activeFilterCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-medium text-app-accent">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </button>
           </div>
+
+          {filtersOpen ? (
+            <div className="space-y-3 rounded-2xl bg-app-card p-3">
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-app-muted">
+                  Tipo de negocio
+                </p>
+                <p className="text-[10px] text-app-muted">
+                  Marca varios. Tipo y promo se combinan.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <FilterChip
+                    active={categories.length === 0}
+                    label="Todos"
+                    onClick={() => setCategories([])}
+                  />
+                  {visibleCategories.map((item) => (
+                    <FilterChip
+                      key={item.id}
+                      active={categories.includes(item.id)}
+                      label={item.label}
+                      onClick={() =>
+                        setCategories((current) => toggleValue(current, item.id))
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {visibleOfferFilters.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-app-muted">
+                    Promo o descuento
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    <FilterChip
+                      active={offers.length === 0}
+                      label="Todas"
+                      onClick={() => setOffers([])}
+                    />
+                    {visibleOfferFilters.map((item) => (
+                      <FilterChip
+                        key={item.id}
+                        active={offers.includes(item.id)}
+                        label={item.chip}
+                        onClick={() =>
+                          setOffers((current) => toggleValue(current, item.id))
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {activeFilterCount > 0 ? (
+                <button
+                  type="button"
+                  className="text-[11px] text-app-muted"
+                  onClick={() => {
+                    setCategories([])
+                    setOffers([])
+                  }}
+                >
+                  Quitar filtros
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -127,7 +242,7 @@ export function CustomerPlacesMap() {
 
       {hasAnyPlaces && filtered.length === 0 ? (
         <p className="rounded-[24px] bg-app-card px-4 py-5 text-center text-sm text-app-muted">
-          No hay negocios de este tipo todavía. Prueba otro filtro.
+          No hay negocios con esta búsqueda. Prueba otro nombre o filtro.
         </p>
       ) : null}
 
@@ -144,11 +259,15 @@ export function CustomerPlacesMap() {
           {selected.note ? (
             <p className="mt-2 text-sm text-app-muted">{selected.note}</p>
           ) : null}
+          <PlacePromoDetails
+            acceptsRojos={selected.acceptsRojos}
+            promos={selected.promos}
+          />
           <a
             href={mapsUrl(selected.lat, selected.lng, selected.name)}
             target="_blank"
             rel="noreferrer"
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-black"
+            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-app-accent py-3 text-sm font-medium text-white"
           >
             <Navigation className="h-4 w-4" />
             Cómo llegar
@@ -174,6 +293,15 @@ export function CustomerPlacesMap() {
                 <p className="mt-0.5 truncate text-xs text-app-muted">
                   {place.address}
                 </p>
+                {place.acceptsRojos || (place.promos && place.promos.length > 0) ? (
+                  <p className="mt-1 text-[11px] text-white/70">
+                    {place.acceptsRojos && place.promos?.length
+                      ? `Acepta ${stellarConfig.loyalty.code} y tiene regalos`
+                      : place.acceptsRojos
+                        ? `Acepta ${stellarConfig.loyalty.code} como descuento`
+                        : `Regala ${stellarConfig.loyalty.code}`}
+                  </p>
+                ) : null}
               </button>
             </li>
           ))}
@@ -196,13 +324,19 @@ function FilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium ${
-        active ? 'bg-app-accent text-black' : 'bg-app-chip text-white/75'
+      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+        active ? 'bg-app-accent text-white' : 'bg-app-chip text-white/75'
       }`}
     >
       {label}
     </button>
   )
+}
+
+function toggleValue<T>(current: T[], value: T): T[] {
+  return current.includes(value)
+    ? current.filter((item) => item !== value)
+    : [...current, value]
 }
 
 function mapsUrl(lat: number, lng: number, name: string): string {

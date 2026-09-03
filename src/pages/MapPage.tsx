@@ -17,8 +17,8 @@ export default function MapPage() {
         <h1 className="text-xl font-semibold">Mapa</h1>
         <p className="mt-1 text-sm text-app-muted">
           {isMerchant
-            ? 'Publica la dirección de tu negocio para que los clientes te encuentren.'
-            : 'Locales de empresas en Stellar Pay. Toca un pin para ver detalles.'}
+            ? 'Publica tu local y las promos de ROJOS para que los clientes las vean en el mapa.'
+            : 'Locales de empresas en Stellar Pay. Filtra por tipo o por promo y toca un pin para ver detalles.'}
         </p>
       </div>
 
